@@ -175,10 +175,9 @@ function evilCount(n){return n<=7?2:3;}
 function home(){
   app.innerHTML='<div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:16px">'+
   '<div style="text-align:center"><h1 style="font-size:40px">ساعة الغدر</h1><p class="muted">لعبة خداع جماعية من 5 إلى 10 لاعبين.</p></div>'+
-  '<a class="card" href="play.html#new" style="text-decoration:none;color:inherit;display:flex;gap:14px;align-items:center;border-color:#7A6233">'+CTIcon('الحارس الليلي',48)+'<div><div style="font-weight:800;font-size:18px">لعبة تلقائية (بدون راوٍ)</div><div class="muted" style="font-size:14px">التطبيق يدير الليل والنهار والتصويت، والجميع يلعب.</div></div></a>'+
-  '<button class="card" id="newgame" style="font-family:inherit;color:inherit;text-align:right;display:flex;gap:14px;align-items:center;cursor:pointer;width:100%">'+CTIcon('العجوز',48)+'<div><div style="font-weight:800;font-size:18px">لعبة مع راوٍ</div><div class="muted" style="font-size:14px">أنت الراوي: تدير اللعبة وترى كل الشخصيات.</div></div></button>'+
+  '<a class="btn" href="play.html#new" style="text-decoration:none;text-align:center;display:block;line-height:24px">ابدأ لعبة جديدة</a>'+
+  '<p class="muted" style="text-align:center;margin:0">بعدها تختار: تلعب معهم، أو تكون الراوي.</p>'+
   '<p class="muted" style="font-size:13px;text-align:center">اللاعبون لا يضغطون هنا، بل يمسحون رمز QR من جوال من أنشأ اللعبة.</p></div>';
-  document.getElementById('newgame').onclick=function(){var room=rid(10);ls('st_'+room,{room:room,players:[],removed:{},round:0,game:null});location.hash='st='+room;};
 }
 
 /* ---------- storyteller ---------- */
