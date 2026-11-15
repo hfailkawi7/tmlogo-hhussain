@@ -21,7 +21,7 @@ var GOOD = [
 ['العجوز','في الليلة الأولى تعرف شخصية لاعب واحد يختاره الراوي عشوائياً.'],
 ['الخيّاطة','مرة واحدة تختار لاعبَين، وتعرف إن كانا من الفريق نفسه.'],
 ['القائد','إذا مات، يعرف الطيبون الأحياء كم شريراً بقي في اللعبة.'],
-['الفارس','إذا رشّحه لاعب طيب للإعدام، يموت من رشّحه فوراً.']
+['الفارس','إذا رشّحه لاعب طيب للإعدام، يموت من رشّحه فوراً ويبدأ الليل.']
 ];
 var EVIL = [
 ['الزعيم','من الليلة الثانية، يختار لاعباً كل ليلة ليقتله.'],
@@ -141,7 +141,12 @@ function act(G, from, a) {
       if (tg && tg.alive && tg.role === R.KNIGHT && p.team === 'good') {
         T.nominators[p.id] = 1; T.nominees[tg.id] = 1;
         G.log.push(p.name + ' رشّح ' + tg.name + '، وكان الفارس! مات ' + p.name + ' فوراً.');
-        kill(G, p, 'knight'); G.v++; afterResolve(G); return true;
+        kill(G, p, 'knight'); G.v++;
+        // the day ends at once and night begins
+        G.lawyerProt = null; G.carry = G.log.slice(-2);
+        if (checkWin(G)) return true;
+        if (G.pendingHunter.length) { G.afterHunter = 'night'; return true; }
+        toNight(G); return true;
       }
       if (tg && tg.alive && !T.nominees[tg.id]) { T.nominators[p.id] = 1; T.nominees[tg.id] = 1; T.noms.push({ by: p.id, target: tg.id, votes: {}, open: true, yes: 0 }); G.log.push(p.name + ' رشّح ' + tg.name + ' للإعدام. صوّتوا الآن.'); ch = true; }
     } else if (a.kind === 'vote' && !G.silenced[p.id]) {
