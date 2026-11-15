@@ -7,9 +7,9 @@
 <meta name="theme-color" content="#0E1220">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Reem+Kufi:wght@500;700&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=1794735324">
-<script src="qr.js?v=1794735324"></script>
-<script src="net.js?v=1794735324"></script>
+<link rel="stylesheet" href="style.css?v=1794735484">
+<script src="qr.js?v=1794735484"></script>
+<script src="net.js?v=1794735484"></script>
 </head>
 <body>
 <div id="app"></div>
@@ -68,17 +68,24 @@ function game(room) {
   var lastPriv = {}, lastPubV = -1, timer = null;
   function impCount(n) { return H.I.nImp === 'auto' ? (n >= 6 ? 2 : 1) : Math.min(+H.I.nImp, n - 2); }
   function pub() { var I = H.I; return { t: 'state', v: I.v, hostId: I.hostId, hostPub: H.pub, phase: I.phase, round: I.round, cats: I.cats, nImp: I.nImp, cat: I.phase !== 'lobby' ? I.cat : null, first: I.first || null,
-    players: I.players.map(function (p) { return { id: p.id, name: p.name, score: p.score }; }),
+    players: I.players.map(function (p) { return { id: p.id, name: p.name, score: p.score, bot: p.bot || undefined }; }),
     reveal: I.phase === 'reveal' ? { word: I.word, imps: I.imps } : null, ready: I.phase === 'play' ? Object.keys(I.ready || {}) : [], scored: I.scored === I.round }; }
   function priv(p) { var I = H.I; if (I.phase === 'lobby' || !I.imps) return null; var imp = I.imps.indexOf(p.id) >= 0; return { round: I.round, imp: imp, cat: I.cat, word: imp ? null : I.word }; }
+  var botT = null;
+  function bots() {
+    var I = H.I; if (botT || I.phase !== 'play') return;
+    var waiting = I.players.filter(function (p) { return p.bot && !(I.ready || {})[p.id]; });
+    if (!waiting.length) return;
+    botT = setTimeout(function () { botT = null; var b = waiting[0]; if (H.I.phase === 'play') req(b.id, 'ready', { on: true, round: H.I.round }); }, 1200 + rnd(1500));
+  }
   function refresh(now) {
-    var I = H.I; S = pub(); V = priv(I.players.filter(function (p) { return p.id === H.me.id; })[0]); render();
+    var I = H.I; setTimeout(bots, 0); S = pub(); V = priv(I.players.filter(function (p) { return p.id === H.me.id; })[0]); render();
     clearTimeout(timer);
     timer = setTimeout(function () {
       ls('i_' + room, H);
       if (S.v !== lastPubV) { lastPubV = S.v; N.publish(room, S).catch(function () {}); }
       I.players.forEach(function (p) {
-        if (p.id === H.me.id) return; var view = priv(p); if (!view) return;
+        if (p.id === H.me.id || p.bot) return; var view = priv(p); if (!view) return;
         var key = JSON.stringify(view); if (lastPriv[p.id] === key) return; lastPriv[p.id] = key; view.v = I.v;
         N.encryptFor(p.pub, view).then(function (e) { e.t = 'priv'; e.to = p.id; e.v = I.v; return N.publish(room, e); }).catch(function () { lastPriv[p.id] = null; });
       });
@@ -148,7 +155,7 @@ function game(room) {
     var h = '';
     if (isHost) h += '<div class="card stack"><h2 style="text-align:center">امسح للانضمام</h2><div class="qr">' + N.qrSVG(joinUrl) + '</div><div class="link">' + esc(joinUrl) + '</div></div>';
     else h += '<div class="card big"><div class="muted">أهلاً</div><div class="role" style="font-size:32px">' + esc(P.name) + '</div><div class="muted">' + (S.players.some(function (p) { return p.id === P.id; }) ? 'أنت في اللعبة. انتظر حتى يبدأ المضيف.' : 'جارٍ الانضمام…') + '</div></div>';
-    h += '<h2>اللاعبون (' + S.players.length + ')</h2>' + S.players.map(function (p, i) { return '<div class="seat"><span class="num">' + (i + 1) + '</span><span class="nm">' + esc(p.name) + (p.id === S.hostId ? ' <span class="muted" style="font-size:13px">(المضيف)</span>' : '') + '</span>' + (isHost && p.id !== S.hostId ? '<button class="x" data-rm="' + esc(p.id) + '">إزالة</button>' : '') + '</div>'; }).join('');
+    h += '<h2>اللاعبون (' + S.players.length + ')</h2>' + S.players.map(function (p, i) { return '<div class="seat"><span class="num">' + (i + 1) + '</span><span class="nm">' + esc(p.name) + (p.id === S.hostId ? ' <span class="muted" style="font-size:13px">(المضيف)</span>' : '') + (p.bot ? ' <span class="pill">آلي</span>' : '') + '</span>' + (isHost && p.id !== S.hostId ? '<button class="x" data-rm="' + esc(p.id) + '">إزالة</button>' : '') + '</div>'; }).join('');
     h += settingsView();
     return h;
   }
@@ -158,6 +165,7 @@ function game(room) {
     var h = '<div class="card stack"><div class="b">اختر الفئات</div><div class="chips">' + CAT_NAMES.map(function (c) { var on = I.cats.indexOf(c) >= 0; return '<button class="pick' + (on ? ' on' : '') + '" style="width:auto;min-height:44px" data-cat="' + esc(c) + '" aria-pressed="' + on + '">' + esc(c) + '</button>'; }).join('') + '</div>' +
       '<div class="b">عدد المحتالين</div><div class="chips">' + [['auto', 'تلقائي (' + impCount(Math.max(n, 3)) + ')'], ['1', 'محتال واحد'], ['2', 'محتالان']].map(function (o) { var on = String(I.nImp) === o[0]; return '<button class="pick' + (on ? ' on' : '') + '" style="width:auto;min-height:44px" data-imp="' + o[0] + '" aria-pressed="' + on + '">' + o[1] + '</button>'; }).join('') + '</div>' +
       '<p class="muted" style="margin:0;font-size:13px">تلقائي: محتالان إذا كنتم 6 أو أكثر، وإلا محتال واحد.</p>' +
+      (n < 10 ? '<button class="btn ghost" id="addbot">أضف لاعباً آلياً</button><p class="muted" style="margin:0;font-size:13px">اللاعب الآلي لا يتكلم: يأخذ كلمة أو يكون محتالاً، ويضغط "جاهز للكشف" وحده. مفيد للتجربة.</p>' : '') +
       '<button class="btn" id="start" ' + (n >= 3 && I.cats.length ? '' : 'disabled') + '>' + (I.round ? 'جولة جديدة' : 'ابدأ اللعب') + '</button>' + (n < 3 ? '<p class="muted" style="margin:0">تحتاج 3 لاعبين على الأقل.</p>' : '') + '</div>';
     return h;
   }
@@ -208,6 +216,7 @@ function game(room) {
       N.genKeys().then(function (k) { P = { id: N.rid(12), name: name.slice(0, 20), priv: k.priv, pub: k.pub }; ls('ip_' + room, P); render(); return N.publish(room, { t: 'join', id: P.id, name: P.name, pub: P.pub }); }).catch(function () {});
     };
     if ((x = $('#start'))) x.onclick = startRound;
+    if ((x = $('#addbot'))) x.onclick = function () { var I = H.I, k = I.players.filter(function (p) { return p.bot; }).length + 1; I.players.push({ id: 'bot' + N.rid(8), name: 'آلي ' + k, pub: 'bot', bot: true, score: 0 }); I.v++; refresh(true); };
     function ask(k, extra) { var a = extra || {}; a.round = S.round; if (isHost) return req(H.me.id, k, a); a.t = 'ireq'; a.from = P.id; a.k = k; N.publish(room, a).catch(function () {}); }
     if ((x = $('#next'))) x.onclick = function () { this.disabled = true; ask('next'); };
     if ((x = $('#ready'))) x.onclick = function () { this.disabled = true; ask('ready', { on: S.ready.indexOf(me()) < 0 }); };
