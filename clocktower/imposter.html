@@ -7,9 +7,9 @@
 <meta name="theme-color" content="#0E1220">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Reem+Kufi:wght@500;700&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=1794734920">
-<script src="qr.js?v=1794734920"></script>
-<script src="net.js?v=1794734920"></script>
+<link rel="stylesheet" href="style.css?v=1794735324">
+<script src="qr.js?v=1794735324"></script>
+<script src="net.js?v=1794735324"></script>
 </head>
 <body>
 <div id="app"></div>
@@ -69,7 +69,7 @@ function game(room) {
   function impCount(n) { return H.I.nImp === 'auto' ? (n >= 6 ? 2 : 1) : Math.min(+H.I.nImp, n - 2); }
   function pub() { var I = H.I; return { t: 'state', v: I.v, hostId: I.hostId, hostPub: H.pub, phase: I.phase, round: I.round, cats: I.cats, nImp: I.nImp, cat: I.phase !== 'lobby' ? I.cat : null, first: I.first || null,
     players: I.players.map(function (p) { return { id: p.id, name: p.name, score: p.score }; }),
-    reveal: I.phase === 'reveal' ? { word: I.word, imps: I.imps } : null }; }
+    reveal: I.phase === 'reveal' ? { word: I.word, imps: I.imps } : null, ready: I.phase === 'play' ? Object.keys(I.ready || {}) : [], scored: I.scored === I.round }; }
   function priv(p) { var I = H.I; if (I.phase === 'lobby' || !I.imps) return null; var imp = I.imps.indexOf(p.id) >= 0; return { round: I.round, imp: imp, cat: I.cat, word: imp ? null : I.word }; }
   function refresh(now) {
     var I = H.I; S = pub(); V = priv(I.players.filter(function (p) { return p.id === H.me.id; })[0]); render();
@@ -84,8 +84,18 @@ function game(room) {
       });
     }, now ? 50 : 400);
   }
+  function req(from, k, a) {
+    var I = H.I; if (!I.players.some(function (p) { return p.id === from; })) return;
+    if (k === 'ready' && I.phase === 'play' && a.round === I.round) {
+      I.ready = I.ready || {}; if (a.on) I.ready[from] = 1; else delete I.ready[from]; I.v++;
+      if (I.players.every(function (p) { return I.ready[p.id]; })) { reveal(); return; }
+      refresh();
+    } else if (k === 'win' && I.phase === 'reveal' && a.round === I.round && I.scored !== I.round) score(a.w === 'imp' ? 'imp' : 'good');
+    else if (k === 'next' && I.phase === 'reveal' && a.round === I.round) startRound();
+  }
   function hostMsg(msg) {
     var I = H.I;
+    if (msg.t === 'ireq' && msg.from) return req(msg.from, msg.k, msg);
     if (msg.t !== 'join' || !msg.id || !msg.pub || I.removed[msg.id]) return;
     var name = String(msg.name || '').slice(0, 20).trim() || 'لاعب', ex = I.players.filter(function (p) { return p.id === msg.id; })[0];
     if (ex) { ex.name = name; ex.pub = msg.pub; lastPriv[msg.id] = null; I.v++; refresh(); }
@@ -98,7 +108,7 @@ function game(room) {
     var word = left[rnd(left.length)]; used.push(word);
     var ids = shuffle(I.players.map(function (p) { return p.id; }));
     I.imps = ids.slice(0, impCount(n)); I.cat = cat; I.word = word; I.round++; I.phase = 'play';
-    I.first = I.players[rnd(n)].id; I.v++; refresh(true);
+    I.first = I.players[rnd(n)].id; I.ready = {}; I.v++; refresh(true);
   }
   function reveal() { H.I.phase = 'reveal'; H.I.v++; refresh(true); }
   function score(who) { var I = H.I; I.players.forEach(function (p) { var imp = I.imps.indexOf(p.id) >= 0; if (who === 'imp' && imp) p.score += 2; if (who === 'good' && !imp) p.score += 1; }); I.scored = I.round; I.v++; refresh(true); }
@@ -157,11 +167,10 @@ function game(room) {
       var r = S.reveal;
       h += '<div class="card big"><div class="muted">الكلمة كانت</div><div class="role">' + esc(r.word) + '</div><span class="pill">' + esc(S.cat) + '</span></div>';
       h += '<div class="card evil big" style="color:#F08A84">' + MASK + '<div class="b" style="font-size:20px">' + (r.imps.length > 1 ? 'المحتالان' : 'المحتال') + '</div><div class="role" style="font-size:30px;color:#F3EEE2">' + r.imps.map(nm).map(esc).join(' و') + '</div></div>';
-      if (isHost) {
-        var I = H.I;
-        if (I.scored !== I.round) h += '<div class="card stack"><div class="b">من فاز بهذه الجولة؟</div><div class="row"><button class="btn" id="wgood">اللاعبون</button><button class="btn ghost" id="wimp">' + (r.imps.length > 1 ? 'المحتالان' : 'المحتال') + '</button></div><p class="muted" style="margin:0;font-size:13px">اللاعبون: +1 لكل واحد. المحتال: +2.</p></div>';
-        h += '<button class="btn" id="next">جولة جديدة</button><button class="btn ghost" id="settings">تغيير الفئات</button>';
-      } else h += '<p class="muted" style="text-align:center">بانتظار المضيف لبدء جولة جديدة…</p>';
+      if (!S.scored) h += '<div class="card stack"><div class="b">من فاز بهذه الجولة؟</div><div class="muted" style="font-size:13px">اتفقوا ثم يضغط أي لاعب. إن كُشف المحتال وخمّن الكلمة فهو الفائز.</div><div class="row"><button class="btn" id="wgood">اللاعبون</button><button class="btn ghost" id="wimp">' + (r.imps.length > 1 ? 'المحتالان' : 'المحتال') + '</button></div><p class="muted" style="margin:0;font-size:13px">اللاعبون: +1 لكل واحد. المحتال: +2.</p></div>';
+      else h += '<div class="card"><p class="muted" style="margin:0">تم تسجيل النقاط. شاهدوها في تبويب "النقاط".</p></div>';
+      h += '<button class="btn" id="next">جولة جديدة</button>';
+      if (isHost) h += '<button class="btn ghost" id="settings">تغيير الفئات أو إضافة لاعبين</button>';
       return h;
     }
     // play
@@ -170,7 +179,10 @@ function game(room) {
     else if (V.imp) h += '<div class="card evil big" style="color:#F08A84">' + MASK + '<div class="role" style="color:#F08A84">أنت المحتال!</div><div class="muted">لا تعرف الكلمة. الفئة هي:</div><span class="pill red" style="font-size:18px;padding:8px 18px">' + esc(V.cat) + '</span><div class="ab" style="font-size:16px">استمع للتلميحات واندمج معهم. تفوز إن لم يكشفوك، أو إن خمّنت الكلمة.</div><button class="btn ghost" id="hide">إخفاء</button></div>';
     else h += '<div class="card good big"><div class="muted">الكلمة السرية</div><div class="role">' + esc(V.word) + '</div><span class="pill blue">' + esc(V.cat) + '</span><div class="ab" style="font-size:16px">أعطِ تلميحاً يدل على الكلمة دون أن تكشفها للمحتال.</div><button class="btn ghost" id="hide">إخفاء</button></div>';
     h += '<div class="card"><div class="b">الفئة: <span class="gold">' + esc(S.cat) + '</span></div><div class="muted" style="margin-top:6px">يبدأ بالتلميح: <b class="gold">' + esc(nm(S.first)) + '</b>، ثم بالدور حول الدائرة.</div></div>';
-    if (isHost) h += '<div class="card stack"><div class="muted" style="font-size:14px">عندما تنتهون من التلميحات والتصويت بالأيدي:</div><button class="btn" id="doreveal">اكشف الكلمة والمحتال</button></div>';
+    var rc = S.ready.length, mine = S.ready.indexOf(me()) >= 0;
+    h += '<div class="card stack endday"><div class="b gold" style="font-size:18px">كشف المحتال</div><div class="muted">بعد التلميحات والتصويت بالأيدي، يضغط كل لاعب. عندما يضغط الجميع تظهر الكلمة والمحتال على كل الجوالات.</div>' +
+      '<div class="meter"><span style="width:' + Math.round(100 * rc / Math.max(1, S.players.length)) + '%"></span></div><div class="muted" style="text-align:center">' + rc + ' من ' + S.players.length + ' جاهزون</div>' +
+      '<button class="btn ' + (mine ? 'ghost' : '') + '" id="ready">' + (mine ? 'تراجع' : 'أنا جاهز للكشف') + '</button></div>';
     return h;
   }
   function scoreView() {
@@ -182,8 +194,8 @@ function game(room) {
     return '<h2 class="gold">طريقة اللعب</h2>' +
       sec('الفكرة', ['كل اللاعبين يرون كلمة سرية واحدة، إلا المحتال (أو المحتالين): يرى الفئة فقط.', 'المحتالون لا يعرفون بعضهم.']) +
       sec('اللعب', ['يبدأ اللاعب الذي يظهر اسمه، ثم بالدور: كل واحد يقول تلميحاً قصيراً عن الكلمة.', 'لا تكشف الكلمة بوضوح، فالمحتال يستمع ويحاول أن يعرفها.', 'المحتال يتظاهر بأنه يعرف الكلمة ويعطي تلميحاً مقنعاً.', 'يمكنكم لعب أكثر من دور تلميحات قبل التصويت.']) +
-      sec('التصويت (بالأيدي)', ['عندما تنتهون، يشير كل لاعب في الوقت نفسه إلى من يظنه المحتال.', 'إن كُشف المحتال، يحصل على فرصة أخيرة: إن خمّن الكلمة يفوز.', 'ثم يضغط المضيف "اكشف الكلمة والمحتال" ليظهر الجواب على كل الجوالات.']) +
-      sec('الفوز والنقاط', ['يفوز اللاعبون إن كشفوا المحتال ولم يخمّن الكلمة: +1 لكل لاعب.', 'يفوز المحتال إن لم يُكشف أو خمّن الكلمة: +2.', 'المضيف يختار الفائز بعد الكشف، والنقاط تُجمع عبر الجولات.']);
+      sec('التصويت (بالأيدي)', ['عندما تنتهون، يشير كل لاعب في الوقت نفسه إلى من يظنه المحتال.', 'إن كُشف المحتال، يحصل على فرصة أخيرة: إن خمّن الكلمة يفوز.', 'ثم يضغط كل لاعب "أنا جاهز للكشف"، وعندما يضغط الجميع يظهر الجواب على كل الجوالات.']) +
+      sec('الفوز والنقاط', ['يفوز اللاعبون إن كشفوا المحتال ولم يخمّن الكلمة: +1 لكل لاعب.', 'يفوز المحتال إن لم يُكشف أو خمّن الكلمة: +2.', 'بعد الكشف يختار أي لاعب الفائز، والنقاط تُجمع عبر الجولات. أي لاعب يستطيع بدء جولة جديدة.']);
   }
   function bind() {
     app.querySelectorAll('[data-tab]').forEach(function (b) { b.onclick = function () { tab = b.getAttribute('data-tab'); render(); window.scrollTo(0, 0); }; });
@@ -196,11 +208,12 @@ function game(room) {
       N.genKeys().then(function (k) { P = { id: N.rid(12), name: name.slice(0, 20), priv: k.priv, pub: k.pub }; ls('ip_' + room, P); render(); return N.publish(room, { t: 'join', id: P.id, name: P.name, pub: P.pub }); }).catch(function () {});
     };
     if ((x = $('#start'))) x.onclick = startRound;
-    if ((x = $('#next'))) x.onclick = startRound;
+    function ask(k, extra) { var a = extra || {}; a.round = S.round; if (isHost) return req(H.me.id, k, a); a.t = 'ireq'; a.from = P.id; a.k = k; N.publish(room, a).catch(function () {}); }
+    if ((x = $('#next'))) x.onclick = function () { this.disabled = true; ask('next'); };
+    if ((x = $('#ready'))) x.onclick = function () { this.disabled = true; ask('ready', { on: S.ready.indexOf(me()) < 0 }); };
     if ((x = $('#settings'))) x.onclick = function () { H.I.phase = 'lobby'; H.I.v++; refresh(true); };
-    if ((x = $('#doreveal'))) x.onclick = function () { if (confirm('كشف الكلمة والمحتال للجميع؟')) reveal(); };
-    if ((x = $('#wgood'))) x.onclick = function () { score('good'); };
-    if ((x = $('#wimp'))) x.onclick = function () { score('imp'); };
+    if ((x = $('#wgood'))) x.onclick = function () { this.disabled = true; ask('win', { w: 'good' }); };
+    if ((x = $('#wimp'))) x.onclick = function () { this.disabled = true; ask('win', { w: 'imp' }); };
     if ((x = $('#reveal'))) x.onclick = function () { hidden = false; render(); };
     if ((x = $('#hide'))) x.onclick = function () { hidden = true; render(); };
   }
