@@ -111,6 +111,7 @@ function game(room) {
   } else {
     N.connect(room, playerMsg);
     if (P.id) N.publish(room, { t: 'join', id: P.id, name: P.name, pub: P.pub }).catch(function () {});
+    setInterval(function () { if (P.id && S && S.phase === 'lobby' && !pl(P.id)) N.publish(room, { t: 'join', id: P.id, name: P.name, pub: P.pub }).catch(function () {}); }, 6000);
     render();
   }
 
