@@ -21,7 +21,7 @@ var GOOD = [
 ['العجوز','في الليلة الأولى تعرف شخصية لاعب واحد يختاره الراوي عشوائياً.'],
 ['الخيّاطة','مرة واحدة تختار لاعبَين، وتعرف إن كانا من الفريق نفسه.'],
 ['القائد','إذا مات، يعرف الطيبون الأحياء كم شريراً بقي في اللعبة.'],
-['صانع المرايا','إذا استخدم شرير قدرته عليه ليلاً، ترتدّ القدرة على الشرير نفسه.']
+['الفارس','إذا رشّحه لاعب طيب للإعدام، يموت من رشّحه فوراً.']
 ];
 var EVIL = [
 ['الزعيم','من الليلة الثانية، يختار لاعباً كل ليلة ليقتله.'],
@@ -35,7 +35,7 @@ var R = {
   DOC:'الطبيب', DET:'المحقّق', BG:'الحارس الشخصي', JUDGE:'القاضي', HUNT:'الصيّاد', COP:'الشرطي',
   MAYOR:'العمدة', RAVEN:'صاحب الغراب', SOLD:'الجندي', GRAN:'الجدّة', JAIL:'السجّان', LAW:'المحامي',
   MEDIC:'المُسعِف', NGUARD:'الحارس الليلي', CHEF:'الطبّاخ', WATCH:'المراقب', OLD:'العجوز',
-  SEAM:'الخيّاطة', LEAD:'القائد', MIRROR:'صانع المرايا'
+  SEAM:'الخيّاطة', LEAD:'القائد', KNIGHT:'الفارس'
 };
 var ABIL = {}; GOOD.concat(EVIL).forEach(function (c) { ABIL[c[0]] = c[1]; });
 function isEvilRole(r) { return EVIL.some(function (c) { return c[0] === r; }); }
@@ -138,6 +138,11 @@ function act(G, from, a) {
     var T = G.today;
     if (a.kind === 'nominate' && !G.silenced[p.id] && !T.nominators[p.id] && !openNom(G)) {
       var tg = find(G, a.t && a.t[0]);
+      if (tg && tg.alive && tg.role === R.KNIGHT && p.team === 'good') {
+        T.nominators[p.id] = 1; T.nominees[tg.id] = 1;
+        G.log.push(p.name + ' رشّح ' + tg.name + '، وكان الفارس! مات ' + p.name + ' فوراً.');
+        kill(G, p, 'knight'); G.v++; afterResolve(G); return true;
+      }
       if (tg && tg.alive && !T.nominees[tg.id]) { T.nominators[p.id] = 1; T.nominees[tg.id] = 1; T.noms.push({ by: p.id, target: tg.id, votes: {}, open: true, yes: 0 }); G.log.push(p.name + ' رشّح ' + tg.name + ' للإعدام. صوّتوا الآن.'); ch = true; }
     } else if (a.kind === 'vote' && !G.silenced[p.id]) {
       var o = openNom(G);
@@ -252,8 +257,8 @@ function resolveNight(G) {
   // 1. jailer
   var j = tgt(R.JAIL); if (j && j.t[0]) { jailed[j.t[0].id] = 1; visit(j.p, j.t[0]); addInfo(G, j.t[0], 'تمّ سجنك الليلة، فلم تعمل قدرتك.'); }
   function on(role) { var x = tgt(role); if (x) x.t.forEach(function (t) { if (role !== R.MEDIC && role !== R.RAVEN) visit(x.p, t); }); return x; }
-  // 2. silencer (mirror reflects)
-  var s = on(R.SIL); if (s && s.t[0]) { var st = s.t[0]; if (st.role === R.MIRROR) st = s.p; G.silenced[st.id] = 1; addInfo(G, st, 'تمّ إسكاتك: لا تتكلم ولا ترشّح ولا تصوّت اليوم.'); }
+  // 2. silencer
+  var s = on(R.SIL); if (s && s.t[0]) { var st = s.t[0]; G.silenced[st.id] = 1; addInfo(G, st, 'تمّ إسكاتك: لا تتكلم ولا ترشّح ولا تصوّت اليوم.'); }
   // 3. protections
   var d = on(R.DOC), prot = {}; if (d && d.t[0]) { prot[d.t[0].id] = 1; G.lastDoc[d.p.id] = d.t[0].id; } else if (d) G.lastDoc[d.p.id] = null;
   var bg = on(R.BG), guard = bg && bg.t[0] ? { by: bg.p, t: bg.t[0] } : null;
@@ -263,7 +268,6 @@ function resolveNight(G) {
   var b = on(R.BOSS);
   if (b && b.t[0] && N >= 2) {
     var T = b.t[0], victim = T;
-    if (T.role === R.MIRROR) victim = b.p;
     if (prot[victim.id]) victim = null;
     else if (guard && guard.t.id === victim.id && guard.by.alive && guard.by.id !== victim.id) victim = prot[guard.by.id] ? null : guard.by;
     else if (victim.role === R.SOLD && !G.soldierUsed[victim.id]) { G.soldierUsed[victim.id] = 1; addInfo(G, victim, 'حاول أحدهم قتلك ونجوت!'); victim = null; }
