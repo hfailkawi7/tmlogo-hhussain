@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ساعة الغدر</title>
+<meta name="theme-color" content="#0E1220">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Reem+Kufi:wght@500;700&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#0E1220;color:#F3EEE2;font-family:'Tajawal',system-ui,sans-serif;-webkit-tap-highlight-color:transparent}
+#app{max-width:480px;margin:0 auto;padding:20px 18px 110px;min-height:100vh;display:flex;flex-direction:column;gap:14px}
+h1,h2,.k{font-family:'Reem Kufi','Tajawal',sans-serif;margin:0}
+h1{font-size:30px;color:#E3B35A}
+h2{font-size:21px}
+.muted{color:#A9B0C3;font-size:15px;line-height:1.6}
+.top{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.pill{font-size:13px;font-weight:700;border-radius:999px;padding:5px 12px;background:#1B2133;border:1px solid #2C344A;color:#C9CEDB;white-space:nowrap}
+.pill.red{background:#3A1D1F;border-color:#6A2B2B;color:#F08A84}
+.pill.blue{background:#1E3354;border-color:#2E4C7A;color:#8FC0F5}
+.pill.gold{background:#E3B35A;border-color:#E3B35A;color:#0E1220}
+.card{background:#161C2D;border:1px solid #2C344A;border-radius:18px;padding:16px}
+.card.good{border-color:#2E4C7A}
+.card.evil{background:#1C1418;border-color:#6A2B2B}
+.btn{font-family:inherit;font-size:17px;font-weight:700;border:none;border-radius:14px;padding:14px 18px;min-height:52px;cursor:pointer;background:#E3B35A;color:#0E1220;width:100%}
+.btn.ghost{background:transparent;color:#E3B35A;border:1px solid #4A4130}
+.btn.small{font-size:14px;min-height:40px;padding:8px 12px;width:auto}
+.btn:disabled{opacity:.45}
+input{font-family:inherit;font-size:18px;width:100%;padding:14px;border-radius:14px;border:1px solid #2C344A;background:#161C2D;color:#F3EEE2;min-height:52px}
+label{font-weight:700;font-size:15px;display:block;margin-bottom:8px}
+.row{display:flex;align-items:center;gap:12px}
+.seat{display:flex;align-items:center;gap:12px;border-radius:14px;padding:12px 14px;background:#161C2D;border:1px solid #253553;width:100%;font-family:inherit;color:inherit;text-align:right;cursor:pointer}
+.seat.evil{background:#1C1418;border-color:#4E2426}
+.seat.boss{background:#2A1517;border-color:#B0443F}
+.seat.dead{opacity:.45}
+.seat.dead .nm{text-decoration:line-through}
+.num{width:32px;height:32px;border-radius:999px;background:#0E1220;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#C9CEDB;flex:none}
+.nm{flex:1;font-size:17px;font-weight:700}
+.rl{font-size:15px;font-weight:700}
+.blue{color:#8FC0F5}.red{color:#F08A84}.gold{color:#E3B35A}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{font-size:15px;font-weight:700;color:#8FC0F5;background:#1E3354;border-radius:10px;padding:8px 14px}
+.char{display:flex;flex-direction:column;gap:4px}
+.char b{font-size:17px}
+.char span{color:#C9CEDB;font-size:15px;line-height:1.6}
+.big{text-align:center;display:flex;flex-direction:column;align-items:center;gap:12px;padding:26px 18px}
+.big .role{font-family:'Reem Kufi',sans-serif;font-size:42px;font-weight:700;line-height:1.1}
+.big .ab{font-size:18px;line-height:1.7;color:#E6E1D6}
+.qr{background:#fff;border-radius:16px;padding:12px;width:260px;height:260px;margin:0 auto}
+.qr svg{width:100%;height:100%;display:block}
+.link{direction:ltr;font-size:12px;color:#A9B0C3;word-break:break-all;text-align:center}
+nav.tabs{position:fixed;bottom:0;left:0;right:0;background:#0E1220;border-top:1px solid #232A3D;padding:8px 12px calc(10px + env(safe-area-inset-bottom));display:flex;gap:6px;justify-content:center}
+nav.tabs button{flex:1;max-width:160px;font-family:inherit;font-size:14px;font-weight:700;border:none;border-radius:12px;min-height:46px;background:transparent;color:#C9CEDB;cursor:pointer}
+nav.tabs button.on{background:#1B2133;color:#E3B35A}
+.sec{display:flex;align-items:center;gap:8px;margin-top:6px}
+.dot{width:10px;height:10px;border-radius:999px}
+ol.night{margin:0;padding-inline-start:22px;display:flex;flex-direction:column;gap:8px;line-height:1.5}
+.net{font-size:12px;color:#A9B0C3;text-align:center}
+.x{background:none;border:none;color:#F08A84;font-size:14px;font-family:inherit;cursor:pointer;min-height:36px}
+</style>
+<script src="qr.js"></script>
+</head>
+<body>
+<div id="app"></div>
+<script>
+(function(){
+'use strict';
+var NTFY='https://ntfy.sh/';
+var GOOD=[
+['الطبيب','كل ليلة يحمي لاعباً من القتل، ولا يحمي الشخص نفسه ليلتين متتاليتين.'],
+['المحقّق','كل ليلة يسأل عن لاعب: هل هو طيب أم شرير؟'],
+['الحارس الشخصي','كل ليلة يختار لاعباً، وإذا هوجم يموت الحارس بدلاً منه.'],
+['القاضي','مرة واحدة في اللعبة يلغي إعدام اليوم.'],
+['الصيّاد','إذا مات يختار لاعباً يموت معه.'],
+['الشرطي','مرة واحدة يطلق النار على لاعب: إن كان شريراً مات، وإن كان طيباً مات الشرطي.'],
+['العمدة','صوته يُحسب بصوتين.'],
+['صاحب الغراب','إذا قُتل ليلاً يعرف شخصية لاعب واحد يختاره.'],
+['الجندي','ينجو من أول محاولة قتل.'],
+['الجدّة','في الليلة الأولى تعرف لاعباً طيباً وشخصيته.'],
+['السجّان','كل ليلة يختار لاعباً فلا يستخدم قدرته تلك الليلة، حتى لو كان شريراً.'],
+['المحامي','كل ليلة يختار لاعباً، وإذا حُكم عليه بالإعدام غداً لا يموت.'],
+['المُسعِف','مرة واحدة في اللعبة يعيد لاعباً طيباً ميتاً إلى الحياة.'],
+['الحارس الليلي','كل ليلة يعرف عدد اللاعبين الذين استيقظوا لاستخدام قدراتهم.'],
+['الطبّاخ','في الليلة الأولى يعرف كم زوجاً من الأشرار يجلسون متجاورين.'],
+['المراقب','كل ليلة يختار لاعباً، ويعرف من زاره تلك الليلة.'],
+['العجوز','في الليلة الأولى تعرف شخصية لاعب واحد يختاره الراوي عشوائياً.'],
+['الخيّاطة','مرة واحدة تختار لاعبَين، وتعرف إن كانا من الفريق نفسه.'],
+['القائد','إذا مات، يعرف الطيبون الأحياء كم شريراً بقي في اللعبة.'],
+['صانع المرايا','إذا استخدم شرير قدرته عليه ليلاً، ترتدّ القدرة على الشرير نفسه.']
+];
+var BOSS='الزعيم';
+var EVIL=[
+['الزعيم','من الليلة الثانية، يختار لاعباً كل ليلة ليقتله.'],
+['الجاسوس','في الليلة الأولى يرى شخصيات جميع اللاعبين.'],
+['المُخادع','يظهر كشخص طيب لكل من يتحرّى عنه.'],
+['المُسكِت','كل ليلة يختار لاعباً، فلا يتكلم ولا يصوّت في اليوم التالي.'],
+['الوريث','إذا مات الزعيم يصبح هو الزعيم الجديد.']
+];
+var NIGHT1=['الأشرار يتعرّفون على بعضهم، والزعيم يرى شخصيات التمويه','المُسكِت','السجّان','الطبيب','الحارس الشخصي','المحقّق','المراقب','الجدّة','العجوز','الطبّاخ','الحارس الليلي','الخيّاطة'];
+var NIGHTX=['المُسكِت','السجّان','الطبيب','الحارس الشخصي','المحامي','الزعيم','صاحب الغراب (إن قُتل)','المُسعِف','المحقّق','المراقب','الحارس الليلي','الخيّاطة'];
+var ABIL={};GOOD.concat(EVIL).forEach(function(c){ABIL[c[0]]=c[1];});
+function isEvil(r){return EVIL.some(function(c){return c[0]===r;});}
+
+var app=document.getElementById('app');
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function ls(k,v){try{if(v===undefined){var s=localStorage.getItem(k);return s?JSON.parse(s):null;}localStorage.setItem(k,JSON.stringify(v));}catch(e){return null;}}
+function rid(n){var a='abcdefghijkmnpqrstuvwxyz23456789',b=crypto.getRandomValues(new Uint8Array(n)),s='';for(var i=0;i<n;i++)s+=a[b[i]%a.length];return s;}
+function shuffle(a){a=a.slice();for(var i=a.length-1;i>0;i--){var j=crypto.getRandomValues(new Uint32Array(1))[0]%(i+1);var t=a[i];a[i]=a[j];a[j]=t;}return a;}
+function topic(room){return 'saatghadr_'+room;}
+function b64(buf){var u=new Uint8Array(buf),s='';for(var i=0;i<u.length;i++)s+=String.fromCharCode(u[i]);return btoa(s);}
+function ub64(s){var b=atob(s),u=new Uint8Array(b.length);for(var i=0;i<b.length;i++)u[i]=b.charCodeAt(i);return u;}
+
+/* ---------- messaging (ntfy.sh) ---------- */
+var netOk=null;
+function setNet(ok){if(netOk!==ok){netOk=ok;var el=document.getElementById('net');if(el)el.textContent=ok?'متصل':'لا يوجد اتصال… جارٍ المحاولة';}}
+function connect(room,onMsg){
+  var seen={},t=topic(room);
+  function handle(o){if(!o||o.event!=='message'||seen[o.id])return;seen[o.id]=1;var m;try{m=JSON.parse(o.message);}catch(e){return;}onMsg(m);}
+  try{var es=new EventSource(NTFY+t+'/sse?since=all');es.onmessage=function(e){try{handle(JSON.parse(e.data));setNet(true);}catch(_){}};}catch(e){}
+  function poll(){fetch(NTFY+t+'/json?poll=1&since=all').then(function(r){return r.text();}).then(function(txt){setNet(true);txt.split('\n').forEach(function(l){if(l.trim()){try{handle(JSON.parse(l));}catch(_){}}});}).catch(function(){setNet(false);});}
+  poll();setInterval(poll,4000);
+}
+function publish(room,obj,tries){
+  tries=tries||0;
+  return fetch(NTFY+topic(room),{method:'POST',body:JSON.stringify(obj)}).then(function(r){if(!r.ok)throw new Error(r.status);setNet(true);}).catch(function(e){setNet(false);if(tries<4)return new Promise(function(res){setTimeout(res,1500*(tries+1));}).then(function(){return publish(room,obj,tries+1);});throw e;});
+}
+
+/* ---------- crypto ---------- */
+var RSA={name:'RSA-OAEP',hash:'SHA-256'};
+function genKeys(){
+  return crypto.subtle.generateKey({name:'RSA-OAEP',modulusLength:2048,publicExponent:new Uint8Array([1,0,1]),hash:'SHA-256'},true,['encrypt','decrypt']).then(function(kp){
+    return Promise.all([crypto.subtle.exportKey('jwk',kp.privateKey),crypto.subtle.exportKey('spki',kp.publicKey)]);
+  }).then(function(r){return {priv:r[0],pub:b64(r[1])};});
+}
+function encryptFor(pub,obj){
+  var iv=crypto.getRandomValues(new Uint8Array(12)),pk,ak,ct;
+  return crypto.subtle.importKey('spki',ub64(pub),RSA,false,['encrypt']).then(function(k){pk=k;return crypto.subtle.generateKey({name:'AES-GCM',length:256},true,['encrypt']);})
+  .then(function(k){ak=k;return crypto.subtle.encrypt({name:'AES-GCM',iv:iv},ak,new TextEncoder().encode(JSON.stringify(obj)));})
+  .then(function(c){ct=c;return crypto.subtle.exportKey('raw',ak);})
+  .then(function(raw){return crypto.subtle.encrypt({name:'RSA-OAEP'},pk,raw);})
+  .then(function(k){return {k:b64(k),iv:b64(iv),c:b64(ct)};});
+}
+function decryptWith(priv,m){
+  return crypto.subtle.importKey('jwk',priv,RSA,false,['decrypt']).then(function(sk){return crypto.subtle.decrypt({name:'RSA-OAEP'},sk,ub64(m.k));})
+  .then(function(raw){return crypto.subtle.importKey('raw',raw,'AES-GCM',false,['decrypt']);})
+  .then(function(ak){return crypto.subtle.decrypt({name:'AES-GCM',iv:ub64(m.iv)},ak,ub64(m.c));})
+  .then(function(pt){return JSON.parse(new TextDecoder().decode(pt));});
+}
+
+/* ---------- shared views ---------- */
+function sheetHTML(){
+  function list(a,cls){return a.map(function(c){return '<div class="card '+cls+' char"><b>'+esc(c[0])+'</b><span>'+esc(c[1])+'</span></div>';}).join('');}
+  return '<h2 class="gold">ورقة الشخصيات</h2><p class="muted" style="margin:0">كل الشخصيات الممكنة. لا يعرف أيّها في اللعبة إلا الراوي.</p>'+
+  '<div class="sec"><span class="dot" style="background:#8FC0F5"></span><h2 class="blue">الطيبون (20)</h2></div>'+list(GOOD,'good')+
+  '<div class="sec"><span class="dot" style="background:#F08A84"></span><h2 class="red">الأشرار (5)</h2></div>'+list(EVIL,'evil');
+}
+function qrSVG(text){
+  try{
+    var q=new QRCode(-1,QRErrorCorrectLevel.M);q.addData(text);q.make();
+    var n=q.getModuleCount(),m=4,s=n+m*2,d='';
+    for(var r=0;r<n;r++)for(var c=0;c<n;c++)if(q.isDark(r,c))d+='M'+(c+m)+' '+(r+m)+'h1v1h-1z';
+    return '<svg viewBox="0 0 '+s+' '+s+'" shape-rendering="crispEdges" role="img" aria-label="رمز QR للانضمام"><rect width="'+s+'" height="'+s+'" fill="#fff"/><path d="'+d+'" fill="#0E1220"/></svg>';
+  }catch(e){return '<p style="color:#0E1220;text-align:center">تعذّر إنشاء الرمز، شارك الرابط بدلاً منه.</p>';}
+}
+function tabsHTML(tabs,cur){return '<nav class="tabs">'+tabs.map(function(t){return '<button data-tab="'+t[0]+'" class="'+(t[0]===cur?'on':'')+'">'+t[1]+'</button>';}).join('')+'</nav>';}
+function evilCount(n){return n<=7?2:3;}
+
+/* ---------- home ---------- */
+function home(){
+  app.innerHTML='<div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:18px;text-align:center">'+
+  '<h1 style="font-size:40px">ساعة الغدر</h1>'+
+  '<p class="muted">لعبة خداع جماعية من 5 إلى 10 لاعبين. الراوي يفتح اللعبة، والباقون يمسحون رمز QR وينضمّون.</p>'+
+  '<button class="btn" id="newgame">أنا الراوي، ابدأ لعبة جديدة</button>'+
+  '<p class="muted" style="font-size:13px">اللاعبون لا يضغطون هنا، بل يمسحون الرمز من جوال الراوي.</p></div>';
+  document.getElementById('newgame').onclick=function(){var room=rid(10);ls('st_'+room,{room:room,players:[],removed:{},round:0,game:null});location.hash='st='+room;};
+}
+
+/* ---------- storyteller ---------- */
+function storyteller(room){
+  var S=ls('st_'+room);
+  if(!S){app.innerHTML='<h1>ساعة الغدر</h1><div class="card"><p class="muted" style="margin:0">هذه اللعبة غير محفوظة على هذا الجهاز. الراوي فقط يستطيع فتح شاشة الراوي من جواله.</p></div><button class="btn" onclick="location.hash=\'\'">الصفحة الرئيسية</button>';return;}
+  var tab=S.game?'grim':'invite';
+  function save(){ls('st_'+room,S);}
+  var joinUrl=location.origin+location.pathname+'#join='+room;
+  connect(room,function(m){
+    if(m.t!=='join'||!m.id||!m.pub||S.removed[m.id])return;
+    var name=String(m.name||'').slice(0,20).trim()||'لاعب';
+    var p=S.players.filter(function(x){return x.id===m.id;})[0];
+    if(p){if(p.name!==name||p.pub!==m.pub){p.name=name;p.pub=m.pub;save();render();}}
+    else{S.players.push({id:m.id,name:name,pub:m.pub});save();render();}
+  });
+  function seated(){return S.game?S.game.seats:[];}
+  function sendRoles(){
+    var g=S.game,n=g.seats.length,ev=g.seats.filter(function(s){return isEvil(s.role);});
+    var pubs={};S.players.forEach(function(p){pubs[p.id]=p.pub;});
+    publish(room,{t:'seats',r:g.round,names:g.seats.map(function(s){return s.name;})});
+    return Promise.all(g.seats.map(function(s,i){
+      var pay={r:g.round,seat:i+1,name:s.name,role:s.role,n:n,e:ev.length};
+      if(isEvil(s.role)){
+        pay.team=ev.map(function(x){return {s:g.seats.indexOf(x)+1,n:x.name,r:x.role};});
+        if(s.role===BOSS)pay.bluffs=g.bluffs;
+        if(s.role==='الجاسوس')pay.all=g.seats.map(function(x,j){return {s:j+1,n:x.name,r:x.role};});
+      }
+      return encryptFor(pubs[s.id],pay).then(function(enc){enc.t='role';enc.to=s.id;enc.r=g.round;return publish(room,enc);});
+    }));
+  }
+  function start(){
+    var ps=S.players.slice(0,10),n=ps.length,ne=evilCount(n);
+    var minions=shuffle(EVIL.slice(1).map(function(c){return c[0];})).slice(0,ne-1);
+    var goods=shuffle(GOOD.map(function(c){return c[0];}));
+    var roles=shuffle([BOSS].concat(minions,goods.slice(0,n-ne)));
+    S.round=(S.round||0)+1;
+    S.game={round:S.round,seats:ps.map(function(p,i){return {id:p.id,name:p.name,role:roles[i]};}),bluffs:goods.slice(n-ne,n-ne+3),dead:{}};
+    save();tab='grim';render();
+    var el=document.getElementById('sendst');if(el)el.textContent='جارٍ إرسال الشخصيات…';
+    sendRoles().then(function(){var el=document.getElementById('sendst');if(el)el.textContent='تم إرسال الشخصيات إلى كل اللاعبين.';}).catch(function(){var el=document.getElementById('sendst');if(el)el.textContent='تعذّر الإرسال، اضغط "أعد الإرسال".';});
+  }
+  function render(){
+    var h='<div class="top"><h1>شاشة الراوي</h1><span class="pill red">للراوي فقط</span></div>';
+    if(tab==='invite'){
+      var n=S.players.length;
+      h+='<div class="card" style="display:flex;flex-direction:column;gap:12px"><h2 style="text-align:center">امسح للانضمام</h2><div class="qr">'+qrSVG(joinUrl)+'</div><div class="link">'+esc(joinUrl)+'</div>'+
+         '<button class="btn ghost small" id="copy" style="align-self:center">نسخ الرابط</button></div>';
+      h+='<div class="top"><h2>اللاعبون ('+n+')</h2>'+(S.game?'<span class="pill">الجولة '+S.game.round+'</span>':'')+'</div>';
+      if(!n)h+='<p class="muted" style="margin:0">بانتظار اللاعبين… كل لاعب يمسح الرمز ويكتب اسمه.</p>';
+      S.players.forEach(function(p,i){h+='<div class="seat"><span class="num">'+(i+1)+'</span><span class="nm">'+esc(p.name)+'</span>'+(i>=10?'<span class="pill red">زائد عن 10</span>':'')+'<button class="x" data-rm="'+esc(p.id)+'">إزالة</button></div>';});
+      var ok=n>=5&&n<=10;
+      h+='<p class="muted" style="margin:0">'+(n<5?'تحتاج 5 لاعبين على الأقل.':n>10?'الحد الأقصى 10 لاعبين، أزل الزائدين.':'العدد مناسب: '+(n-evilCount(n))+' طيبون و'+evilCount(n)+' أشرار.')+'</p>';
+      h+='<button class="btn" id="start" '+(ok?'':'disabled')+'>'+(S.game?'جولة جديدة ووزّع الشخصيات':'الكل جاهز، وزّع الشخصيات')+'</button>';
+      if(S.game)h+='<p class="muted" style="margin:0;font-size:13px">الجولة الجديدة توزّع شخصيات جديدة على اللاعبين الحاليين.</p>';
+    }else if(tab==='grim'){
+      var g=S.game;
+      h+='<p class="muted" style="margin:0" id="sendst">اطلب من اللاعبين الجلوس في دائرة حسب أرقام المقاعد. اضغط على لاعب لتعليمه ميتاً.</p>';
+      g.seats.forEach(function(s,i){var ev=isEvil(s.role);h+='<button class="seat '+(s.role===BOSS?'boss':ev?'evil':'')+(g.dead[s.id]?' dead':'')+'" data-dead="'+esc(s.id)+'"><span class="num">'+(i+1)+'</span><span class="nm">'+esc(s.name)+'</span><span class="rl '+(ev?'red':'blue')+'">'+esc(s.role)+'</span></button>';});
+      h+='<div class="card"><div class="gold" style="font-weight:700;margin-bottom:10px">شخصيات التمويه للزعيم</div><div class="chips">'+g.bluffs.map(function(b){return '<span class="chip">'+esc(b)+'</span>';}).join('')+'</div></div>';
+      h+='<button class="btn ghost" id="resend">أعد إرسال الشخصيات</button>';
+    }else if(tab==='night'){
+      var inPlay={};S.game.seats.forEach(function(s){inPlay[s.role]=1;});
+      function nl(a){return '<ol class="night">'+a.filter(function(r,i){return (i===0&&a===NIGHT1)||inPlay[r.split(' (')[0]];}).map(function(r){var who=S.game.seats.filter(function(s){return s.role===r.split(' (')[0];})[0];return '<li><b>'+esc(r)+'</b>'+(who?' <span class="muted">· '+esc(who.name)+'</span>':'')+'</li>';}).join('')+'</ol>';}
+      h+='<div class="card"><h2 class="gold" style="margin-bottom:10px">الليلة الأولى</h2>'+nl(NIGHT1)+'</div><div class="card"><h2 class="gold" style="margin-bottom:10px">باقي الليالي</h2>'+nl(NIGHTX)+'</div>';
+    }else h+=sheetHTML();
+    h+='<div class="net" id="net">'+(netOk===false?'لا يوجد اتصال… جارٍ المحاولة':netOk?'متصل':'جارٍ الاتصال…')+'</div>';
+    h+=tabsHTML(S.game?[['grim','الكتاب'],['night','ترتيب الليل'],['invite','اللاعبون'],['sheet','الشخصيات']]:[['invite','اللاعبون'],['sheet','الشخصيات']],tab);
+    app.innerHTML=h;
+    app.querySelectorAll('[data-tab]').forEach(function(b){b.onclick=function(){tab=b.getAttribute('data-tab');render();scrollTo(0,0);};});
+    app.querySelectorAll('[data-rm]').forEach(function(b){b.onclick=function(){var id=b.getAttribute('data-rm');S.removed[id]=1;S.players=S.players.filter(function(p){return p.id!==id;});save();render();};});
+    app.querySelectorAll('[data-dead]').forEach(function(b){b.onclick=function(){var id=b.getAttribute('data-dead');S.game.dead[id]=!S.game.dead[id];save();render();};});
+    var st=document.getElementById('start');if(st)st.onclick=function(){if(S.game&&!confirm('بدء جولة جديدة بشخصيات جديدة؟'))return;start();};
+    var rs=document.getElementById('resend');if(rs)rs.onclick=function(){rs.disabled=true;rs.textContent='جارٍ الإرسال…';sendRoles().then(function(){rs.textContent='تم الإرسال';}).catch(function(){rs.disabled=false;rs.textContent='تعذّر، حاول مجدداً';});};
+    var cp=document.getElementById('copy');if(cp)cp.onclick=function(){if(navigator.clipboard)navigator.clipboard.writeText(joinUrl).then(function(){cp.textContent='تم النسخ';});};
+  }
+  render();
+}
+
+/* ---------- player ---------- */
+function player(room){
+  var P=ls('p_'+room)||{};
+  var tab='me',hidden=true,others={},seats=null,seatsR=0,busy=false;
+  function save(){ls('p_'+room,P);}
+  function onMsg(m){
+    if(m.t==='join'&&m.id){others[m.id]=String(m.name||'').slice(0,20);if(!P.role)render();}
+    else if(m.t==='seats'&&m.r>=seatsR){seatsR=m.r;seats=m.names;if(tab==='players')render();}
+    else if(m.t==='role'&&P.id&&m.to===P.id&&(!P.role||m.r>P.role.r)){
+      decryptWith(P.priv,m).then(function(d){if(!P.role||d.r>P.role.r){P.role=d;save();hidden=true;tab='me';render();}}).catch(function(){});
+    }
+  }
+  connect(room,onMsg);
+  if(P.id&&P.pub)publish(room,{t:'join',id:P.id,name:P.name,pub:P.pub}).catch(function(){});
+  function render(){
+    var h='<div class="top"><h1>ساعة الغدر</h1>'+(P.role?'<span class="pill">مقعد '+P.role.seat+'</span>':'')+'</div>';
+    if(!P.id){
+      h+='<div class="card" style="display:flex;flex-direction:column;gap:14px"><h2>انضم إلى اللعبة</h2><div><label for="nm">اكتب اسمك</label><input id="nm" maxlength="20" autocomplete="off" placeholder="مثلاً: سارة"></div><button class="btn" id="join">انضم</button></div>';
+    }else if(!P.role&&tab!=='sheet'){
+      var names=Object.keys(others).map(function(k){return others[k];});
+      h+='<div class="card big"><div class="muted">أهلاً</div><div class="role" style="font-size:34px">'+esc(P.name)+'</div><div class="muted">أنت في اللعبة. انتظر حتى يوزّع الراوي الشخصيات.</div></div>';
+      h+='<h2>اللاعبون المنضمّون ('+names.length+')</h2><div class="chips">'+names.map(function(n){return '<span class="chip">'+esc(n)+'</span>';}).join('')+'</div>';
+    }else if(tab==='me'){
+      var R=P.role,ev=isEvil(R.role);
+      if(hidden){
+        h+='<div class="card big" style="padding:40px 18px"><div class="role" style="font-size:28px">شخصيتك جاهزة</div><div class="muted">تأكد أن لا أحد ينظر إلى شاشتك.</div><button class="btn" id="reveal">اكشف شخصيتي</button></div>';
+      }else{
+        h+='<div class="card big '+(ev?'evil':'good')+'"><div class="muted">'+esc(R.name)+' · شخصيتك</div><div class="role">'+esc(R.role)+'</div><span class="pill '+(ev?'red':'blue')+'">'+(ev?'فريق الأشرار':'فريق الطيبين')+'</span><div class="ab">'+esc(ABIL[R.role])+'</div></div>';
+        if(ev&&R.team){
+          h+='<div class="card evil"><div class="red" style="font-weight:700;margin-bottom:10px">فريقك</div>'+R.team.map(function(t){return '<div class="row" style="justify-content:space-between;padding:4px 0"><b>'+esc(t.n)+' · مقعد '+t.s+'</b><span class="'+(t.r===BOSS?'red':'')+'" style="font-weight:700">'+esc(t.r)+'</span></div>';}).join('')+'</div>';
+        }
+        if(R.bluffs)h+='<div class="card"><div class="gold" style="font-weight:700">شخصيات للتمويه</div><p class="muted" style="margin:4px 0 10px">غير موجودة في هذه اللعبة، ادّعِ واحدة منها بأمان.</p><div class="chips">'+R.bluffs.map(function(b){return '<span class="chip">'+esc(b)+'</span>';}).join('')+'</div></div>';
+        if(R.all)h+='<div class="card"><div class="gold" style="font-weight:700;margin-bottom:10px">ما يراه الجاسوس: كل الشخصيات</div>'+R.all.map(function(t){return '<div class="row" style="justify-content:space-between;padding:4px 0"><span>'+t.s+'. '+esc(t.n)+'</span><b class="'+(isEvil(t.r)?'red':'blue')+'">'+esc(t.r)+'</b></div>';}).join('')+'</div>';
+        h+='<div class="card"><div class="gold" style="font-weight:700;margin-bottom:6px">هدفك</div><div class="muted">'+(ev?'اقتلوا الطيبين حتى يتساوى عدد الأشرار الأحياء مع الطيبين، دون أن يُكشف الزعيم.':'اكتشفوا الزعيم وأعدموه قبل أن يتساوى عدد الأشرار مع الطيبين.')+'</div><div class="muted" style="font-size:13px;margin-top:6px">في هذه اللعبة '+R.n+' لاعبين: '+(R.n-R.e)+' طيبون و'+R.e+' أشرار.</div></div>';
+        h+='<button class="btn ghost" id="hide">إخفاء الشخصية</button>';
+      }
+    }else if(tab==='players'){
+      h+='<h2>ترتيب الجلوس</h2><p class="muted" style="margin:0">اجلسوا في دائرة بهذا الترتيب.</p>';
+      (seats||[]).forEach(function(n,i){h+='<div class="seat'+(P.role&&P.role.seat===i+1?' boss':'')+'"><span class="num">'+(i+1)+'</span><span class="nm">'+esc(n)+'</span>'+(P.role&&P.role.seat===i+1?'<span class="pill gold">أنت</span>':'')+'</div>';});
+      if(!seats)h+='<p class="muted">جارٍ التحميل…</p>';
+    }else h+=sheetHTML();
+    h+='<div class="net" id="net">'+(netOk===false?'لا يوجد اتصال… جارٍ المحاولة':netOk?'متصل':'جارٍ الاتصال…')+'</div>';
+    if(P.role)h+=tabsHTML([['me','شخصيتي'],['players','اللاعبون'],['sheet','الشخصيات']],tab);
+    else if(P.id)h+=tabsHTML([['me','الانتظار'],['sheet','الشخصيات']],tab==='sheet'?'sheet':'me');
+    app.innerHTML=h;
+    app.querySelectorAll('[data-tab]').forEach(function(b){b.onclick=function(){tab=b.getAttribute('data-tab');render();scrollTo(0,0);};});
+    var j=document.getElementById('join');
+    if(j)j.onclick=function(){
+      var name=document.getElementById('nm').value.trim();if(!name){document.getElementById('nm').focus();return;}
+      if(busy)return;busy=true;j.disabled=true;j.textContent='جارٍ الانضمام…';
+      genKeys().then(function(k){P={id:rid(12),name:name.slice(0,20),priv:k.priv,pub:k.pub};save();return publish(room,{t:'join',id:P.id,name:P.name,pub:P.pub});})
+      .then(function(){busy=false;render();}).catch(function(){busy=false;render();});
+    };
+    var rv=document.getElementById('reveal');if(rv)rv.onclick=function(){hidden=false;render();};
+    var hd=document.getElementById('hide');if(hd)hd.onclick=function(){hidden=true;render();};
+  }
+  render();
+}
+
+function route(){
+  var h=location.hash.replace(/^#/,''),m;
+  if((m=h.match(/^join=([a-z0-9]{6,20})$/)))player(m[1]);
+  else if((m=h.match(/^st=([a-z0-9]{6,20})$/)))storyteller(m[1]);
+  else home();
+}
+window.addEventListener('hashchange',function(){location.reload();});
+if(!window.crypto||!crypto.subtle){app.innerHTML='<h1>ساعة الغدر</h1><p class="muted">افتح الصفحة من رابط https في متصفح حديث.</p>';}else route();
+})();
+</script>
+</body>
+</html>
