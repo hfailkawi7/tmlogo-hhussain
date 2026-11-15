@@ -202,7 +202,7 @@ function game(room) {
   function logCard() { return S.log && S.log.length ? '<div class="card log">' + S.log.map(function (l) { return '<p>' + esc(l) + '</p>'; }).join('') + '</div>' : ''; }
   function infoCard() {
     if (!V.info || !V.info.length) return '';
-    return '<div class="card"><div class="gold b" style="margin-bottom:8px">آخر معلوماتك (سرّية)</div>' + V.info.slice(-3).map(function (l) { return '<p class="infoline">' + esc(l) + '</p>'; }).join('') + '</div>';
+    return '<div class="card gold-b"><div class="gold b" style="margin-bottom:8px">معلوماتك (سرّية)</div>' + V.info.slice(-3).map(function (l) { return '<p class="infoline">' + esc(l) + '</p>'; }).join('') + '</div>';
   }
   function gameView() {
     var h = '';
@@ -223,6 +223,7 @@ function game(room) {
     if (S.hunter) h += '<div class="card"><p class="muted" style="margin:0">مات الصيّاد. بانتظار أن يختار…</p></div>';
     if (S.phase === 'night') {
       var key = 'n' + S.night;
+      if (V.alive && !(V.done || sent[key])) h += infoCard();
       if (!V.alive) h += '<div class="card"><p class="muted" style="margin:0">أنت ميت. انتظر حتى الصباح.</p></div>';
       else if (V.done || sent[key]) h += '<div class="card big"><div class="role" style="font-size:26px">أنهيت ليلتك</div><div class="muted">بانتظار بقية اللاعبين…</div></div>';
       else {
@@ -233,7 +234,7 @@ function game(room) {
         if (n && spec.optional) h += '<p class="muted" style="margin:0;font-size:13px">يمكنك عدم الاختيار والضغط على إنهاء الليلة لتأجيل قدرتك.</p>';
         h += '</div><p class="muted" style="margin:0;font-size:13px;text-align:center">لا أحد يعرف من أنهى ليلته ومن لم ينهِها.</p>';
       }
-      h += infoCard();
+      if (!V.alive || V.done || sent[key]) h += infoCard();
       return h;
     }
     // day

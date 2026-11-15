@@ -77,6 +77,7 @@ function start(G, rng) {
   G.players.forEach(function (p) {
     if (p.team === 'evil') addInfo(G, p, 'فريق الأشرار: ' + G.players.filter(function (x) { return x.team === 'evil'; }).map(function (x) { return x.name + ' (' + x.role + ')'; }).join('، '));
   });
+  firstNightInfo(G);
   G.v++; return true;
 }
 
@@ -108,6 +109,7 @@ function actionSpec(G, p) {
     case R.RAVEN: return { kind: 'night', n: 1, pool: a, label: 'إن قُتلت الليلة، ستعرف شخصية هذا اللاعب' };
     case R.SEAM: return u.seam ? none() : { kind: 'night', n: 2, pool: a, optional: true, label: 'مرة واحدة: اختر لاعبَين لتعرف إن كانا من الفريق نفسه (أو تجاوز)' };
     case R.MEDIC: return (u.medic || G.night < 2) ? none() : { kind: 'night', n: 1, pool: ids(G.players.filter(function (x) { return !x.alive; })), optional: true, label: 'مرة واحدة: اختر لاعباً ميتاً لإعادته (أو تجاوز)' };
+    case R.GRAN: case R.OLD: case R.CHEF: return G.night === 1 ? { kind: 'night', n: 0, pool: [], label: 'اقرأ معلومتك أعلاه، ثم اضغط "إنهاء الليلة".' } : none();
     default: return none();
   }
   function none() { return { kind: 'night', n: 0, pool: [], label: 'لا يوجد ما تفعله الليلة.' }; }
@@ -227,6 +229,21 @@ function checkWin(G) {
   return false;
 }
 
+
+/* first-night information, given as soon as the night starts */
+function firstNightInfo(G) {
+    var gr = byRole(G, R.GRAN); if (gr) { var gs = G.players.filter(function (p) { return p.team === 'good' && p.id !== gr.id; }); var g = gs[rnd(gs.length)]; if (g) addInfo(G, gr, g.name + ' طيب، وشخصيته: ' + g.role + '.'); }
+    var ow = byRole(G, R.OLD);
+    if (ow) {
+      // 20% chance to show an evil player, otherwise a good one (keeps the game longer)
+      var others = G.players.filter(function (p) { return p.id !== ow.id; });
+      var evs = others.filter(function (p) { return p.team === 'evil'; }), gds = others.filter(function (p) { return p.team === 'good'; });
+      var from = (evs.length && (Math.random() < 0.2 || !gds.length)) ? evs : gds;
+      var o = from[rnd(from.length)]; addInfo(G, ow, 'شخصية ' + o.name + ': ' + shownRole(G, o) + '.');
+    }
+    var ch = byRole(G, R.CHEF); if (ch) { var n = G.players.length, pairs = 0; for (var i = 0; i < n; i++) if (G.players[i].team === 'evil' && G.players[(i + 1) % n].team === 'evil') pairs++; if (n === 2) pairs = Math.min(pairs, 1); addInfo(G, ch, 'عدد أزواج الأشرار الجالسين متجاورين: ' + pairs + '.'); }
+  }
+
 /* ---------- night resolution ---------- */
 function resolveNight(G) {
   var A = G.acts, N = G.night, deaths = [], visits = {}, jailed = {};
@@ -262,18 +279,6 @@ function resolveNight(G) {
   if (ng && ng.alive && !jailed[ng.id]) { var woke = G.players.filter(function (p) { return p.alive && (A[p.id] || []).length && p.role !== R.RAVEN; }).length; addInfo(G, ng, 'استيقظ ' + woke + ' لاعبين الليلة لاستخدام قدراتهم.'); }
   var w = byRole(G, R.WATCH), wt = w && A[w.id] && find(G, A[w.id][0]);
   if (w && w.alive && !jailed[w.id] && wt) { var vs = (visits[wt.id] || []).filter(function (n) { return n !== w.name; }); addInfo(G, w, vs.length ? 'زار ' + wt.name + ' الليلة: ' + vs.join('، ') + '.' : 'لم يزر أحد ' + wt.name + ' الليلة.'); }
-  if (N === 1) {
-    var gr = byRole(G, R.GRAN); if (gr && !jailed[gr.id]) { var gs = G.players.filter(function (p) { return p.team === 'good' && p.id !== gr.id; }); var g = gs[rnd(gs.length)]; if (g) addInfo(G, gr, g.name + ' طيب، وشخصيته: ' + g.role + '.'); }
-    var ow = byRole(G, R.OLD);
-    if (ow && !jailed[ow.id]) {
-      // 20% chance to show an evil player, otherwise a good one (keeps the game longer)
-      var others = G.players.filter(function (p) { return p.id !== ow.id; });
-      var evs = others.filter(function (p) { return p.team === 'evil'; }), gds = others.filter(function (p) { return p.team === 'good'; });
-      var from = (evs.length && (Math.random() < 0.2 || !gds.length)) ? evs : gds;
-      var o = from[rnd(from.length)]; addInfo(G, ow, 'شخصية ' + o.name + ': ' + shownRole(G, o) + '.');
-    }
-    var ch = byRole(G, R.CHEF); if (ch && !jailed[ch.id]) { var n = G.players.length, pairs = 0; for (var i = 0; i < n; i++) if (G.players[i].team === 'evil' && G.players[(i + 1) % n].team === 'evil') pairs++; if (n === 2) pairs = Math.min(pairs, 1); addInfo(G, ch, 'عدد أزواج الأشرار الجالسين متجاورين: ' + pairs + '.'); }
-  }
   // 7. apply
   var names = [];
   deaths.forEach(function (p) { if (p.alive) { kill(G, p, 'night'); names.push(p.name); } });
