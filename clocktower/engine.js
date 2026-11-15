@@ -68,7 +68,9 @@ function start(G, rng) {
   G.players = shuffle(G.players, rng);           // random seating
   G.players.forEach(function (p, i) { p.role = roles[i]; p.team = isEvilRole(roles[i]) ? 'evil' : 'good'; p.alive = true; p.seat = i + 1; G.info[p.id] = []; G.used[p.id] = {}; });
   G.bluffs = goods.slice(n - ne, n - ne + 3);
-  G.fake = goods[n - ne + 3] || G.bluffs[0];     // what the Deceiver shows as
+  // the Deceiver's cover: any good role (in play or not) except the Boss's bluffs
+  var cover = GOOD.map(function (c) { return c[0]; }).filter(function (r) { return G.bluffs.indexOf(r) < 0; });
+  G.fake = cover[rnd(cover.length, rng)];
   G.phase = 'night'; G.night = 1; G.day = 0; G.acts = {}; G.nightDone = {};
   G.log = ['بدأت اللعبة. الليلة الأولى: كل لاعب يفتح شخصيته ثم يضغط "إنهاء الليلة".'];
   // first-night knowledge
@@ -262,7 +264,14 @@ function resolveNight(G) {
   if (w && w.alive && !jailed[w.id] && wt) { var vs = (visits[wt.id] || []).filter(function (n) { return n !== w.name; }); addInfo(G, w, vs.length ? 'زار ' + wt.name + ' الليلة: ' + vs.join('، ') + '.' : 'لم يزر أحد ' + wt.name + ' الليلة.'); }
   if (N === 1) {
     var gr = byRole(G, R.GRAN); if (gr && !jailed[gr.id]) { var gs = G.players.filter(function (p) { return p.team === 'good' && p.id !== gr.id; }); var g = gs[rnd(gs.length)]; if (g) addInfo(G, gr, g.name + ' طيب، وشخصيته: ' + g.role + '.'); }
-    var ow = byRole(G, R.OLD); if (ow && !jailed[ow.id]) { var os = G.players.filter(function (p) { return p.id !== ow.id; }); var o = os[rnd(os.length)]; addInfo(G, ow, 'شخصية ' + o.name + ': ' + shownRole(G, o) + '.'); }
+    var ow = byRole(G, R.OLD);
+    if (ow && !jailed[ow.id]) {
+      // 20% chance to show an evil player, otherwise a good one (keeps the game longer)
+      var others = G.players.filter(function (p) { return p.id !== ow.id; });
+      var evs = others.filter(function (p) { return p.team === 'evil'; }), gds = others.filter(function (p) { return p.team === 'good'; });
+      var from = (evs.length && (Math.random() < 0.2 || !gds.length)) ? evs : gds;
+      var o = from[rnd(from.length)]; addInfo(G, ow, 'شخصية ' + o.name + ': ' + shownRole(G, o) + '.');
+    }
     var ch = byRole(G, R.CHEF); if (ch && !jailed[ch.id]) { var n = G.players.length, pairs = 0; for (var i = 0; i < n; i++) if (G.players[i].team === 'evil' && G.players[(i + 1) % n].team === 'evil') pairs++; if (n === 2) pairs = Math.min(pairs, 1); addInfo(G, ch, 'عدد أزواج الأشرار الجالسين متجاورين: ' + pairs + '.'); }
   }
   // 7. apply
@@ -327,6 +336,7 @@ function privateView(G, p) {
   var v = { role: p.role, seat: p.seat, team: p.team, alive: p.alive, info: (G.info[p.id] || []).slice(-15) };
   if (p.team === 'evil') v.evil = G.players.filter(function (x) { return x.team === 'evil'; }).map(function (x) { return { s: x.seat, n: x.name, r: x.role }; });
   if (p.role === R.BOSS) v.bluffs = G.bluffs;
+  if (p.role === R.DEC) v.fake = G.fake;
   if (p.role === R.SPY) v.all = G.players.map(function (x) { return { s: x.seat, n: x.name, r: x.role }; });
   var spec = actionSpec(G, p); if (spec) v.spec = spec;
   if (G.phase === 'night') v.done = !!G.nightDone[p.id];
