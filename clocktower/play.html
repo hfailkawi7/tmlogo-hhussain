@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>ساعة الغدر — لعبة تلقائية</title>
+<title>ساعة الغدر</title>
 <meta name="theme-color" content="#0E1220">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Reem+Kufi:wght@500;700&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
@@ -35,12 +35,12 @@ location.href = './';
 
 /* ---------- create (host) ---------- */
 function createGame() {
-  app.innerHTML = '<div class="top"><h1>لعبة تلقائية</h1><a class="pill" href="./">رجوع</a></div>' +
-    '<div class="card stack"><p class="muted" style="margin:0">لا حاجة لراوٍ: التطبيق يدير الليل والنهار. أنت تلعب أيضاً، لكن أبقِ هذا الجوال مفتوحاً طوال اللعبة لأنه يدير اللعبة.</p>' +
+  app.innerHTML = '<div class="top"><h1>لعبة جديدة</h1><a class="pill" href="./">رجوع</a></div>' +
+    '<div class="card stack">' +
     '<div><label for="nm">اسمك</label><input id="nm" maxlength="20" autocomplete="off" placeholder="مثلاً: حسين"></div>' +
     '<div class="b">ماذا تريد أن تكون؟</div><div class="picks"><button class="pick on" data-mode="play" aria-pressed="true">' + icon('المحقّق', 36) + '<span class="nm">ألعب معهم<br><span class="muted" style="font-weight:500;font-size:14px">تأخذ شخصية مثل الجميع، والتطبيق يدير اللعبة.</span></span></button>' +
     '<button class="pick" data-mode="st" aria-pressed="false">' + icon('العجوز', 36) + '<span class="nm">أنا الراوي<br><span class="muted" style="font-weight:500;font-size:14px">لا تلعب: ترى كل الشخصيات وما يختاره الجميع، والتطبيق يحسب النتائج.</span></span></button></div>' +
-    '<button class="btn" id="go">أنشئ اللعبة</button></div>';
+    '<button class="btn" id="go">أنشئ اللعبة</button><p class="muted" style="margin:0;font-size:13px">أبقِ هذا الجوال مفتوحاً طوال اللعبة لأنه يدير اللعبة.</p></div>';
   var mode = 'play';
   app.querySelectorAll('[data-mode]').forEach(function (b) { b.onclick = function () { mode = b.getAttribute('data-mode'); app.querySelectorAll('[data-mode]').forEach(function (x) { var o = x === b; x.classList.toggle('on', o); x.setAttribute('aria-pressed', o); }); }; });
   $('#go').onclick = function () {
