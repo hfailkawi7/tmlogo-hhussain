@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ساعة الغدر — لعبة تلقائية</title>
+<meta name="theme-color" content="#0E1220">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Reem+Kufi:wght@500;700&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script src="qr.js"></script>
+<script src="icons.js"></script>
+<script src="engine.js"></script>
+<script src="net.js"></script>
+</head>
+<body>
+<div id="app"></div>
+<script>
+(function () {
+'use strict';
+var E = CTEngine, N = CTNet, icon = CTIcon, R = E.R;
+var app = document.getElementById('app');
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+function ls(k, v) { try { if (v === undefined) { var s = localStorage.getItem(k); return s ? JSON.parse(s) : null; } localStorage.setItem(k, JSON.stringify(v)); } catch (e) { return null; } }
+function $(sel) { return app.querySelector(sel); }
+function on(sel, f) { app.querySelectorAll(sel).forEach(function (el) { el.addEventListener('click', function (ev) { f(el, ev); }); }); }
+
+if (!window.crypto || !crypto.subtle) { app.innerHTML = '<h1>ساعة الغدر</h1><p class="muted">افتح الصفحة من رابط https في متصفح حديث.</p>'; return; }
+
+var hash = location.hash.replace(/^#/, ''), m;
+window.addEventListener('hashchange', function () { location.reload(); });
+if (hash === 'new') return createGame();
+if ((m = hash.match(/^g=([a-z0-9]{6,20})$/))) return game(m[1]);
+location.href = './';
+
+/* ---------- create (host) ---------- */
+function createGame() {
+  app.innerHTML = '<div class="top"><h1>لعبة تلقائية</h1><a class="pill" href="./">رجوع</a></div>' +
+    '<div class="card stack"><p class="muted" style="margin:0">لا حاجة لراوٍ: التطبيق يدير الليل والنهار. أنت تلعب أيضاً، لكن أبقِ هذا الجوال مفتوحاً طوال اللعبة لأنه يدير اللعبة.</p>' +
+    '<div><label for="nm">اسمك</label><input id="nm" maxlength="20" autocomplete="off" placeholder="مثلاً: حسين"></div><button class="btn" id="go">أنشئ اللعبة</button></div>';
+  $('#go').onclick = function () {
+    var name = $('#nm').value.trim(); if (!name) return $('#nm').focus();
+    this.disabled = true; this.textContent = 'جارٍ الإنشاء…';
+    N.genKeys().then(function (k) {
+      var room = N.rid(10), me = { id: N.rid(12), name: name.slice(0, 20) };
+      var G = E.create(room, me); E.addPlayer(G, { id: me.id, name: me.name, pub: 'host' });
+      ls('h_' + room, { G: G, priv: k.priv, pub: k.pub, me: me });
+      location.replace('#g=' + room); location.reload();
+    });
+  };
+}
+
+/* ---------- game (host or player) ---------- */
+function game(room) {
+  var H = ls('h_' + room), isHost = !!H;
+  var P = isHost ? null : (ls('p_' + room) || {});
+  var S = null, V = null, Vv = -1;            // public state, my private view
+  var tab = 'game', hidden = true, sels = {}, sent = {}, toast = '', copOpen = false;
+  function sel(ctx) { return (sels[ctx] = sels[ctx] || []); }
+  var joinUrl = location.origin + location.pathname + '#g=' + room;
+
+  /* --- host engine --- */
+  var lastPriv = {}, lastPubV = -1, timer = null;
+  function hostRefresh(now) {
+    var G = H.G;
+    S = E.publicState(G); S.hostPub = H.pub;
+    var meP = E.find(G, H.me.id); V = E.privateView(G, meP); V.v = G.v;
+    render();
+    clearTimeout(timer);
+    timer = setTimeout(function () {
+      ls('h_' + room, H);
+      if (S.v !== lastPubV) { lastPubV = S.v; N.publish(room, S).catch(function () {}); }
+      if (G.phase === 'lobby') return;
+      G.players.forEach(function (p) {
+        if (p.id === H.me.id) return;
+        var view = E.privateView(G, p), key = JSON.stringify(view);
+        if (lastPriv[p.id] === key) return; lastPriv[p.id] = key; view.v = G.v;
+        N.encryptFor(p.pub, view).then(function (enc) { enc.t = 'priv'; enc.to = p.id; enc.v = G.v; return N.publish(room, enc); }).catch(function () { lastPriv[p.id] = null; });
+      });
+    }, now ? 50 : 500);
+  }
+  function hostMsg(msg) {
+    if (msg.t === 'join' && msg.id && msg.pub) { if (E.addPlayer(H.G, msg)) hostRefresh(); else if (H.G.phase !== 'lobby' && E.find(H.G, msg.id)) { lastPriv[msg.id] = null; hostRefresh(); } }
+    else if (msg.t === 'act' && msg.from) {
+      N.decryptWith(H.priv, msg).then(function (a) { if (E.act(H.G, msg.from, a)) hostRefresh(); }).catch(function () {});
+    }
+  }
+  function send(a) {
+    a.n = N.rid(10);
+    if (isHost) { if (E.act(H.G, H.me.id, a)) hostRefresh(true); return Promise.resolve(); }
+    if (!S || !S.hostPub) { flash('لم يصل الاتصال بالمضيف بعد، حاول بعد لحظة.'); return Promise.reject(); }
+    return N.encryptFor(S.hostPub, a).then(function (enc) { enc.t = 'act'; enc.from = P.id; return N.publish(room, enc); })
+      .catch(function () { flash('تعذّر الإرسال، تحقق من الإنترنت.'); throw 0; });
+  }
+  function flash(t) { toast = t; render(); setTimeout(function () { if (toast === t) { toast = ''; render(); } }, 3500); }
+
+  /* --- player messaging --- */
+  function playerMsg(msg) {
+    if (msg.t === 'state' && msg.hostId) { if (!S || msg.v >= S.v) { S = msg; render(); } }
+    else if (msg.t === 'priv' && P.id && msg.to === P.id && msg.v > Vv) {
+      var v = msg.v;
+      N.decryptWith(P.priv, msg).then(function (d) { if (v > Vv) { var newRole = !V || V.role !== d.role; Vv = v; V = d; if (newRole) hidden = true; render(); } }).catch(function () {});
+    }
+  }
+  N.onStatus(function () { var el = document.getElementById('net'); if (el) el.textContent = netText(); });
+  function netText() { var s = N.status(); return s === false ? 'لا يوجد اتصال… جارٍ المحاولة' : s ? 'متصل' : 'جارٍ الاتصال…'; }
+
+  if (isHost) {
+    N.connect(room, hostMsg); hostRefresh(true);
+    keepAwake();
+  } else {
+    N.connect(room, playerMsg);
+    if (P.id) N.publish(room, { t: 'join', id: P.id, name: P.name, pub: P.pub }).catch(function () {});
+    render();
+  }
+
+  function keepAwake() {
+    var lock = null;
+    function req() { if ('wakeLock' in navigator && !document.hidden) navigator.wakeLock.request('screen').then(function (l) { lock = l; }).catch(function () {}); }
+    req(); document.addEventListener('visibilitychange', req); document.addEventListener('click', function () { if (!lock) req(); });
+  }
+
+  /* --- helpers --- */
+  function me() { return isHost ? H.me.id : P.id; }
+  function pl(id) { if (!S) return null; for (var i = 0; i < S.players.length; i++) if (S.players[i].id === id) return S.players[i]; return null; }
+  function nm(id) { var p = pl(id); return p ? p.name : '؟'; }
+  function seats() { return S.players.slice().sort(function (a, b) { return (a.seat || 0) - (b.seat || 0); }); }
+  function pickList(pool, n, ctx) {
+    var cur = sel(ctx);
+    return '<div class="picks">' + seats().filter(function (p) { return pool.indexOf(p.id) >= 0; }).map(function (p) {
+      var on = cur.indexOf(p.id) >= 0;
+      return '<button class="pick' + (on ? ' on' : '') + (p.alive ? '' : ' deadp') + '" data-pick="' + esc(p.id) + '" data-ctx="' + ctx + '" data-n="' + n + '" aria-pressed="' + on + '"><span class="num">' + (p.seat || '') + '</span><span class="nm">' + esc(p.name) + '</span>' + (on ? '<span class="pill gold">✓</span>' : '') + '</button>';
+    }).join('') + '</div>';
+  }
+  function phaseText() { if (!S) return ''; return S.phase === 'lobby' ? 'الانتظار' : S.phase === 'night' ? 'الليلة ' + S.night : S.phase === 'day' ? 'النهار ' + S.day : 'انتهت اللعبة'; }
+
+  /* --- views --- */
+  function render() {
+    var h = '<div class="top"><h1>ساعة الغدر</h1><div class="row" style="gap:6px">' + (S ? '<span class="pill ' + (S.phase === 'night' ? 'blue' : S.phase === 'day' ? 'gold' : '') + '">' + phaseText() + '</span>' : '') + (V && V.seat ? '<span class="pill">مقعد ' + V.seat + '</span>' : '') + '</div></div>';
+    if (toast) h += '<div class="card toast">' + esc(toast) + '</div>';
+    if (!isHost && !P.id) h += joinView();
+    else if (!S) h += '<div class="card"><p class="muted" style="margin:0">جارٍ الاتصال باللعبة…</p></div>';
+    else if (S.phase === 'lobby') h += lobbyView();
+    else if (!pl(me())) h += '<div class="card"><p class="muted" style="margin:0">بدأت اللعبة قبل انضمامك. انتظر الجولة القادمة.</p></div>';
+    else if (!V) h += '<div class="card"><p class="muted" style="margin:0">جارٍ استلام شخصيتك…</p></div>';
+    else if (tab === 'game') h += gameView();
+    else if (tab === 'role') h += roleView();
+    else if (tab === 'players') h += playersView();
+    else h += sheetView();
+    h += '<div class="net" id="net">' + netText() + '</div>';
+    if (S && S.phase !== 'lobby' && V) h += '<nav class="tabs">' + [['game', 'اللعبة'], ['role', 'شخصيتي'], ['players', 'اللاعبون'], ['sheet', 'الشخصيات']].map(function (t) { return '<button data-tab="' + t[0] + '" class="' + (tab === t[0] ? 'on' : '') + '">' + t[1] + '</button>'; }).join('') + '</nav>';
+    else if (S && S.phase === 'lobby') h += '<nav class="tabs">' + [['game', 'الانتظار'], ['sheet', 'الشخصيات']].map(function (t) { return '<button data-tab="' + t[0] + '" class="' + (tab === t[0] ? 'on' : '') + '">' + t[1] + '</button>'; }).join('') + '</nav>';
+    var y = window.scrollY;
+    app.innerHTML = h;
+    window.scrollTo(0, y);
+    bind();
+  }
+  function joinView() {
+    return '<div class="card stack"><h2>انضم إلى اللعبة</h2><div><label for="nm">اكتب اسمك</label><input id="nm" maxlength="20" autocomplete="off" placeholder="مثلاً: سارة"></div><button class="btn" id="join">انضم</button></div>';
+  }
+  function lobbyView() {
+    if (S.phase === 'lobby' && tab === 'sheet') return sheetView();
+    var h = '';
+    if (isHost) h += '<div class="card stack"><h2 style="text-align:center">امسح للانضمام</h2><div class="qr">' + N.qrSVG(joinUrl) + '</div><div class="link">' + esc(joinUrl) + '</div><button class="btn ghost small" id="copy" style="align-self:center">نسخ الرابط</button></div>';
+    else h += '<div class="card big"><div class="muted">أهلاً</div><div class="role" style="font-size:32px">' + esc(P.name) + '</div><div class="muted">' + (pl(P.id) ? 'أنت في اللعبة. انتظر حتى يبدأ المضيف.' : 'جارٍ الانضمام…') + '</div></div>';
+    h += '<h2>اللاعبون (' + S.players.length + ')</h2>';
+    S.players.forEach(function (p, i) { h += '<div class="seat"><span class="num">' + (i + 1) + '</span><span class="nm">' + esc(p.name) + (p.id === S.hostId ? ' <span class="muted" style="font-size:13px">(المضيف)</span>' : '') + '</span>' + (isHost && p.id !== S.hostId ? '<button class="x" data-rm="' + esc(p.id) + '">إزالة</button>' : '') + '</div>'; });
+    if (isHost) {
+      var n = S.players.length, ok = n >= 5 && n <= 10;
+      h += '<p class="muted" style="margin:0">' + (n < 5 ? 'تحتاج 5 لاعبين على الأقل (معك).' : 'العدد مناسب: ' + (n - E.evilCount(n)) + ' طيبون و' + E.evilCount(n) + ' أشرار.') + '</p>';
+      h += '<button class="btn" id="start" ' + (ok ? '' : 'disabled') + '>الكل جاهز، ابدأ اللعبة</button>';
+      h += '<p class="muted" style="margin:0;font-size:13px">أبقِ هذا الجوال مفتوحاً والشاشة مضاءة حتى نهاية اللعبة.</p>';
+    }
+    return h;
+  }
+  function logCard() { return S.log && S.log.length ? '<div class="card log">' + S.log.map(function (l) { return '<p>' + esc(l) + '</p>'; }).join('') + '</div>' : ''; }
+  function infoCard() {
+    if (!V.info || !V.info.length) return '';
+    return '<div class="card"><div class="gold b" style="margin-bottom:8px">آخر معلوماتك (سرّية)</div>' + V.info.slice(-3).map(function (l) { return '<p class="infoline">' + esc(l) + '</p>'; }).join('') + '</div>';
+  }
+  function gameView() {
+    var h = '';
+    if (S.phase === 'over') {
+      var good = S.winner === 'good';
+      h += '<div class="card big ' + (good ? 'good' : 'evil') + '"><div class="role">' + (good ? 'فاز الطيبون!' : 'فاز الأشرار!') + '</div></div>' + logCard();
+      h += '<h2>شخصيات الجميع</h2>' + seats().map(function (p) { return '<div class="seat ' + (p.team === 'evil' ? 'evil' : '') + (p.alive ? '' : ' dead') + '">' + icon(p.role, 36) + '<span class="nm">' + esc(p.name) + '</span><span class="rl ' + (p.team === 'evil' ? 'red' : 'blue') + '">' + esc(p.role) + '</span></div>'; }).join('');
+      if (isHost) h += '<button class="btn ghost" id="again">لعبة جديدة</button>';
+      return h;
+    }
+    h += logCard();
+    var spec = V.spec;
+    if (spec && spec.kind === 'hunter') {
+      h += '<div class="card evil stack">' + icon(R.HUNT, 48) + '<b>' + esc(spec.label) + '</b>' + pickList(spec.pool, 1, 'hunter') +
+        '<button class="btn" id="hunt" ' + (sel('hunter').length === 1 ? '' : 'disabled') + '>تأكيد</button><button class="btn ghost" id="huntskip">لا أريد أخذ أحد</button></div>';
+      return h;
+    }
+    if (S.hunter) h += '<div class="card"><p class="muted" style="margin:0">مات الصيّاد. بانتظار أن يختار…</p></div>';
+    if (S.phase === 'night') {
+      var key = 'n' + S.night;
+      if (!V.alive) h += '<div class="card"><p class="muted" style="margin:0">أنت ميت. انتظر حتى الصباح.</p></div>';
+      else if (V.done || sent[key]) h += '<div class="card big"><div class="role" style="font-size:26px">أنهيت ليلتك</div><div class="muted">بانتظار بقية اللاعبين…</div></div>';
+      else {
+        var n = spec ? spec.n : 0, cs = sel(key), ok = !n || cs.length === n || (spec.optional && cs.length === 0);
+        h += '<div class="card stack"><div class="row">' + icon(V.role, 44) + '<div><div class="b">' + esc(V.role) + '</div><div class="muted" style="font-size:14px">' + esc(spec ? spec.label : '') + '</div></div></div>';
+        if (n) h += pickList(spec.pool, n, key);
+        h += '<button class="btn" id="endnight" ' + (ok ? '' : 'disabled') + '>إنهاء الليلة</button>';
+        if (n && spec.optional) h += '<p class="muted" style="margin:0;font-size:13px">يمكنك عدم الاختيار والضغط على إنهاء الليلة لتأجيل قدرتك.</p>';
+        h += '</div><p class="muted" style="margin:0;font-size:13px;text-align:center">لا أحد يعرف من أنهى ليلته ومن لم ينهِها.</p>';
+      }
+      h += infoCard();
+      return h;
+    }
+    // day
+    h += infoCard();
+    if (!V.alive) h += '<div class="card"><p class="muted" style="margin:0">أنت ميت: تشاهد فقط، ولا تصوّت.</p></div>';
+    else if (V.silenced) h += '<div class="card evil"><p class="red b" style="margin:0">أنت مُسكَت اليوم: لا تتكلم ولا ترشّح ولا تصوّت.</p></div>';
+    var open = S.noms.filter(function (o) { return o.open; })[0], vk = open ? 'v' + S.day + open.target : '';
+    if (open) {
+      h += '<div class="card stack gold-b"><div class="b" style="font-size:18px">' + esc(nm(open.target)) + ' مرشّح للإعدام</div><div class="muted">رشّحه ' + esc(nm(open.by)) + ' · صوّت ' + open.votes + ' من ' + S.voters + '</div>';
+      if (V.alive && !V.silenced && !V.voted && !sent[vk]) h += '<div class="row"><button class="btn" id="yes">نعم، أعدموه</button><button class="btn ghost" id="no">لا</button></div>';
+      else if (V.alive && !V.silenced) h += '<p class="muted" style="margin:0">صوّتّ. بانتظار البقية…</p>';
+      h += '</div>';
+    } else if (V.canNominate) {
+      var taken = S.noms.map(function (o) { return o.target; });
+      var pool = seats().filter(function (p) { return p.alive && taken.indexOf(p.id) < 0; }).map(function (p) { return p.id; });
+      h += '<div class="card stack"><div class="b">رشّح لاعباً للإعدام</div><div class="muted" style="font-size:14px">يمكن لكل لاعب أن يرشّح مرة واحدة في النهار.</div>' + pickList(pool, 1, 'nom' + S.day) + '<button class="btn" id="nominate" ' + (sel('nom' + S.day).length === 1 ? '' : 'disabled') + '>رشّح</button></div>';
+    }
+    var closed = S.noms.filter(function (o) { return !o.open; });
+    if (closed.length) h += '<div class="card"><div class="b" style="margin-bottom:8px">نتائج التصويت اليوم</div>' + closed.map(function (o) { return '<div class="row" style="justify-content:space-between;padding:3px 0"><span>' + esc(nm(o.target)) + '</span><b>' + o.yes + ' صوت</b></div>'; }).join('') +
+      '<p class="muted" style="margin:8px 0 0">' + (S.leader ? 'إن انتهى النهار الآن سيُعدم: <b class="gold">' + esc(nm(S.leader)) + '</b>' : 'لن يُعدم أحد الآن (المطلوب ' + S.need + ' صوت على الأقل).') + '</p></div>';
+    if (V.cop) h += '<div class="card stack"><button class="btn ghost" id="copt">' + (copOpen ? 'إغلاق قدرة الشرطي' : 'قدرة الشرطي (مرة واحدة)') + '</button>' + (copOpen ? pickList(seats().filter(function (p) { return p.alive && p.id !== me(); }).map(function (p) { return p.id; }), 1, 'cop' + S.day) + '<button class="btn" id="cop" ' + (sel('cop' + S.day).length === 1 ? '' : 'disabled') + '>أطلق النار</button>' : '') + '</div>';
+    if (V.judge) h += '<button class="btn ghost" id="judge">' + 'ألغِ إعدام اليوم (قدرة القاضي، مرة واحدة)</button>';
+    if (V.alive) {
+      h += '<div class="card stack endday"><div class="b gold" style="font-size:18px">إنهاء النهار</div><div class="muted">عندما يضغط كل اللاعبين الأحياء، ينتهي النهار ويبدأ الليل.</div>' +
+        '<div class="meter"><span style="width:' + Math.round(100 * S.endCount / Math.max(1, S.aliveCount)) + '%"></span></div><div class="muted" style="text-align:center">' + S.endCount + ' من ' + S.aliveCount + ' جاهزون</div>' +
+        (open ? '<p class="muted" style="margin:0;font-size:13px">لا ينتهي النهار قبل انتهاء التصويت الحالي.</p>' : '') +
+        '<button class="btn ' + (V.ended ? 'ghost' : '') + '" id="endday">' + (V.ended ? 'تراجع، لست جاهزاً' : 'أنا جاهز لإنهاء النهار') + '</button></div>';
+    }
+    return h;
+  }
+  function roleView() {
+    var ev = V.team === 'evil', h = '';
+    if (hidden) return '<div class="card big" style="padding:40px 18px"><div class="role" style="font-size:28px">شخصيتك</div><div class="muted">تأكد أن لا أحد ينظر إلى شاشتك.</div><button class="btn" id="reveal">اكشف شخصيتي</button></div>';
+    h += '<div class="card big ' + (ev ? 'evil' : 'good') + '">' + icon(V.role, 96) + '<div class="role">' + esc(V.role) + '</div><span class="pill ' + (ev ? 'red' : 'blue') + '">' + (ev ? 'فريق الأشرار' : 'فريق الطيبين') + '</span><div class="ab">' + esc(E.ABIL[V.role]) + '</div>' + (V.alive ? '' : '<span class="pill">أنت ميت</span>') + '</div>';
+    if (V.evil) h += '<div class="card evil"><div class="red b" style="margin-bottom:10px">فريقك</div>' + V.evil.map(function (t) { return '<div class="row" style="padding:5px 0">' + icon(t.r, 32) + '<b style="flex:1">' + esc(t.n) + ' · مقعد ' + t.s + '</b><span class="' + (t.r === R.BOSS ? 'red' : '') + ' b">' + esc(t.r) + '</span></div>'; }).join('') + '</div>';
+    if (V.bluffs) h += '<div class="card"><div class="gold b">شخصيات للتمويه</div><p class="muted" style="margin:4px 0 10px">غير موجودة في هذه اللعبة، ادّعِ واحدة منها بأمان.</p><div class="chips">' + V.bluffs.map(function (b) { return '<span class="chip">' + icon(b, 26) + esc(b) + '</span>'; }).join('') + '</div></div>';
+    if (V.all) h += '<div class="card"><div class="gold b" style="margin-bottom:10px">ما يراه الجاسوس: كل الشخصيات</div>' + V.all.map(function (t) { return '<div class="row" style="padding:4px 0">' + icon(t.r, 30) + '<span style="flex:1">' + t.s + '. ' + esc(t.n) + '</span><b class="' + (E.isEvilRole(t.r) ? 'red' : 'blue') + '">' + esc(t.r) + '</b></div>'; }).join('') + '</div>';
+    h += '<div class="card"><div class="gold b" style="margin-bottom:6px">هدفك</div><div class="muted">' + (ev ? 'احموا الزعيم حتى يبقى لاعبان فقط في اللعبة والزعيم أحدهما.' : 'اكتشفوا الزعيم وأعدموه قبل أن يبقى لاعبان فقط.') + '</div></div>';
+    if (V.info && V.info.length) h += '<div class="card"><div class="gold b" style="margin-bottom:8px">كل معلوماتك</div>' + V.info.map(function (l) { return '<p class="infoline">' + esc(l) + '</p>'; }).join('') + '</div>';
+    h += '<button class="btn ghost" id="hide">إخفاء الشخصية</button>';
+    return h;
+  }
+  function playersView() {
+    return '<h2>ترتيب الجلوس</h2><p class="muted" style="margin:0">اجلسوا في دائرة بهذا الترتيب.</p>' + seats().map(function (p) {
+      var mine = p.id === me();
+      return '<div class="seat' + (p.alive ? '' : ' dead') + (mine ? ' mine' : '') + '"><span class="num">' + p.seat + '</span><span class="nm">' + esc(p.name) + '</span>' + (mine ? '<span class="pill gold">أنت</span>' : '') + (p.alive ? '' : '<span class="pill">ميت</span>') + '</div>';
+    }).join('');
+  }
+  function sheetView() {
+    function list(a, cls) { return a.map(function (c) { return '<div class="card ' + cls + ' row" style="align-items:flex-start">' + icon(c[0], 44) + '<div class="char"><b>' + esc(c[0]) + '</b><span>' + esc(c[1]) + '</span></div></div>'; }).join(''); }
+    return '<h2 class="gold">ورقة الشخصيات</h2><p class="muted" style="margin:0">كل الشخصيات الممكنة. لا أحد يعرف أيّها في هذه اللعبة.</p>' +
+      '<div class="sec"><span class="dot" style="background:#8FC0F5"></span><h2 class="blue">الطيبون (20)</h2></div>' + list(E.GOOD, 'good') +
+      '<div class="sec"><span class="dot" style="background:#F08A84"></span><h2 class="red">الأشرار (5)</h2></div>' + list(E.EVIL, 'evil');
+  }
+
+  /* --- events --- */
+  function bind() {
+    on('[data-tab]', function (b) { tab = b.getAttribute('data-tab'); render(); window.scrollTo(0, 0); });
+    on('[data-pick]', function (b) {
+      var id = b.getAttribute('data-pick'), n = +b.getAttribute('data-n'), ctx = b.getAttribute('data-ctx'), cs = sel(ctx), i = cs.indexOf(id);
+      if (i >= 0) cs.splice(i, 1); else { if (n === 1) cs.length = 0; if (cs.length < n) cs.push(id); }
+      render();
+    });
+    on('[data-rm]', function (b) { E.removePlayer(H.G, b.getAttribute('data-rm')); hostRefresh(true); });
+    var x;
+    if ((x = $('#join'))) x.onclick = function () {
+      var name = $('#nm').value.trim(); if (!name) return $('#nm').focus();
+      this.disabled = true; this.textContent = 'جارٍ الانضمام…';
+      N.genKeys().then(function (k) { P = { id: N.rid(12), name: name.slice(0, 20), priv: k.priv, pub: k.pub }; ls('p_' + room, P); render(); return N.publish(room, { t: 'join', id: P.id, name: P.name, pub: P.pub }); })
+        .catch(function () { flash('تعذّر الانضمام، تحقق من الإنترنت.'); });
+    };
+    if ((x = $('#copy'))) x.onclick = function () { var el = this; if (navigator.clipboard) navigator.clipboard.writeText(joinUrl).then(function () { el.textContent = 'تم النسخ'; }); };
+    if ((x = $('#start'))) x.onclick = function () { if (E.start(H.G)) { tab = 'role'; hidden = true; hostRefresh(true); } };
+    if ((x = $('#again'))) x.onclick = function () {
+      if (!confirm('بدء لعبة جديدة بنفس اللاعبين؟')) return;
+      var old = H.G, G = E.create(room, H.me); G.v = old.v + 1;
+      old.players.forEach(function (p) { G.players.push({ id: p.id, name: p.name, pub: p.pub, alive: true }); });
+      G.removed = old.removed; G.processed = old.processed; H.G = G; lastPriv = {}; tab = 'game'; hostRefresh(true);
+    };
+    if ((x = $('#endnight'))) x.onclick = function () { var k = 'n' + S.night; sent[k] = 1; var t = sel(k).slice(); render(); send({ kind: 'night', t: t }).catch(function () { sent[k] = 0; render(); }); };
+    if ((x = $('#hunt'))) x.onclick = function () { send({ kind: 'hunter', t: sel('hunter').slice() }); sels.hunter = []; };
+    if ((x = $('#huntskip'))) x.onclick = function () { send({ kind: 'hunter', t: [] }); };
+    function vote(yes) { var o = S.noms.filter(function (o) { return o.open; })[0]; if (!o) return; var k = 'v' + S.day + o.target; sent[k] = 1; render(); send({ kind: 'vote', yes: yes }).catch(function () { sent[k] = 0; render(); }); }
+    if ((x = $('#yes'))) x.onclick = function () { vote(true); };
+    if ((x = $('#no'))) x.onclick = function () { vote(false); };
+    if ((x = $('#nominate'))) x.onclick = function () { send({ kind: 'nominate', t: sel('nom' + S.day).slice() }); sels['nom' + S.day] = []; this.disabled = true; this.textContent = 'تم الترشيح'; };
+    if ((x = $('#cop'))) x.onclick = function () { if (confirm('متأكد؟ إن كان طيباً ستموت أنت.')) { send({ kind: 'cop', t: sel('cop' + S.day).slice() }); copOpen = false; } };
+    if ((x = $('#copt'))) x.onclick = function () { copOpen = !copOpen; render(); };
+    if ((x = $('#judge'))) x.onclick = function () { if (confirm('إلغاء إعدام اليوم؟ يمكنك استخدامها مرة واحدة فقط.')) send({ kind: 'judge' }); };
+    if ((x = $('#endday'))) x.onclick = function () { this.disabled = true; send({ kind: 'endday', on: !V.ended }); };
+    if ((x = $('#reveal'))) x.onclick = function () { hidden = false; render(); };
+    if ((x = $('#hide'))) x.onclick = function () { hidden = true; render(); };
+  }
+}
+})();
+</script>
+</body>
+</html>
