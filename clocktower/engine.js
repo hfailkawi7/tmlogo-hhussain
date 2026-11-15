@@ -56,7 +56,7 @@ function addPlayer(G, p) {
   var ex = find(G, p.id);
   if (ex) { if (ex.name !== name || ex.pub !== p.pub) { ex.name = name; ex.pub = p.pub; G.v++; return true; } return false; }
   if (G.phase !== 'lobby' || G.players.length >= 10) return false;
-  G.players.push({ id: p.id, name: name, pub: p.pub, alive: true }); G.v++; return true;
+  G.players.push({ id: p.id, name: name, pub: p.pub, alive: true, bot: !!p.bot }); G.v++; return true;
 }
 function removePlayer(G, id) { if (G.phase !== 'lobby' || id === G.hostId) return; G.removed[id] = 1; G.players = G.players.filter(function (p) { return p.id !== id; }); G.v++; }
 function start(G, rng) {
@@ -278,12 +278,39 @@ function resolveNight(G) {
   if (G.pendingHunter.length) G.afterHunter = null; // day continues; hunter chooses during day
 }
 
+
+/* ---------- bots: one move for a bot, or null ---------- */
+function botMove(G, p, rng) {
+  rng = rng || Math.random;
+  function pick(arr) { return arr[Math.floor(rng() * arr.length)]; }
+  var spec = actionSpec(G, p);
+  if (spec && spec.kind === 'hunter') { var hp = spec.pool.filter(function (id) { return p.team === 'good' ? true : find(G, id).team === 'good'; }); return { kind: 'hunter', t: hp.length ? [pick(hp)] : [] }; }
+  if (!p.alive) return null;
+  if (G.phase === 'night' && !G.nightDone[p.id]) {
+    var pool = spec.pool.slice();
+    if (p.team === 'evil' && (p.role === R.BOSS || p.role === R.SIL)) { var g = pool.filter(function (id) { return find(G, id).team === 'good'; }); if (g.length) pool = g; }
+    var t = [];
+    if (spec.n && !(spec.optional && rng() < 0.4)) { pool = pool.slice(); while (t.length < spec.n && pool.length) t.push(pool.splice(Math.floor(rng() * pool.length), 1)[0]); }
+    return { kind: 'night', t: t };
+  }
+  if (G.phase === 'day' && G.today) {
+    var o = openNom(G);
+    if (o) { if (!G.silenced[p.id] && o.votes[p.id] === undefined) { var tg = find(G, o.target); var yes = p.team === 'evil' ? tg.team === 'good' && rng() < 0.7 : rng() < 0.5; return { kind: 'vote', yes: yes }; } return null; }
+    if (!G.silenced[p.id] && !G.today.nominators[p.id] && rng() < 0.12) {
+      var c = alive(G).filter(function (x) { return x.id !== p.id && !G.today.nominees[x.id] && (p.team === 'good' || x.team === 'good'); });
+      if (c.length) return { kind: 'nominate', t: [pick(c).id] };
+    }
+    if (!G.today.end[p.id]) return { kind: 'endday' };
+  }
+  return null;
+}
+
 /* ---------- views ---------- */
 function publicState(G) {
   var T = G.today, ov = G.phase === 'over';
   return {
     t: 'state', v: G.v, phase: G.phase, night: G.night, day: G.day, hostId: G.hostId,
-    players: G.players.map(function (p) { return { id: p.id, name: p.name, alive: p.alive, seat: p.seat || 0, role: ov ? p.role : undefined, team: ov ? p.team : undefined }; }),
+    players: G.players.map(function (p) { return { id: p.id, name: p.name, alive: p.alive, seat: p.seat || 0, bot: p.bot || undefined, role: ov ? p.role : undefined, team: ov ? p.team : undefined }; }),
     log: G.log.slice(-8),
     noms: T && G.phase === 'day' ? T.noms.map(function (o) { return { by: o.by, target: o.target, open: o.open, yes: o.yes, votes: o.open ? Object.keys(o.votes).length : undefined, yesBy: o.open ? undefined : Object.keys(o.votes).filter(function (k) { return o.votes[k]; }) }; }) : [],
     voters: G.phase === 'day' ? voters(G).length : 0,
@@ -317,5 +344,5 @@ function privateView(G, p) {
 
 root.CTEngine = { GOOD: GOOD, EVIL: EVIL, R: R, ABIL: ABIL, isEvilRole: isEvilRole, evilCount: evilCount,
   create: create, addPlayer: addPlayer, removePlayer: removePlayer, start: start, act: act, find: find,
-  publicState: publicState, privateView: privateView, actionSpec: actionSpec };
+  publicState: publicState, privateView: privateView, actionSpec: actionSpec, botMove: botMove };
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -56,7 +56,7 @@ label{font-weight:700;font-size:15px;display:block;margin-bottom:8px}
 .meter{height:10px;border-radius:999px;background:#0E1220;overflow:hidden}
 .meter span{display:block;height:100%;background:#E3B35A;border-radius:999px}
 nav.tabs{position:fixed;bottom:0;left:0;right:0;background:#0E1220;border-top:1px solid #232A3D;padding:8px 10px calc(10px + env(safe-area-inset-bottom));display:flex;gap:4px;justify-content:center}
-nav.tabs button{flex:1;max-width:130px;font-family:inherit;font-size:14px;font-weight:700;border:none;border-radius:12px;min-height:46px;background:transparent;color:#C9CEDB;cursor:pointer}
+nav.tabs button{flex:1;max-width:130px;font-family:inherit;font-size:13px;padding:0 2px;font-weight:700;border:none;border-radius:12px;min-height:46px;background:transparent;color:#C9CEDB;cursor:pointer}
 nav.tabs button.on{background:#1B2133;color:#E3B35A}
 .sec{display:flex;align-items:center;gap:8px;margin-top:6px}
 .dot{width:10px;height:10px;border-radius:999px}
