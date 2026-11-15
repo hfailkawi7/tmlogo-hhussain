@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>المحتال</title>
+<meta name="theme-color" content="#0E1220">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Reem+Kufi:wght@500;700&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css?v=1794734920">
+<script src="qr.js?v=1794734920"></script>
+<script src="net.js?v=1794734920"></script>
+</head>
+<body>
+<div id="app"></div>
+<script>
+(function () {
+'use strict';
+var N = CTNet, app = document.getElementById('app');
+var CATS = {
+  'طعام': ['كبسة','مندي','شاورما','فلافل','بيتزا','برجر','سوشي','مجبوس','هريس','مكرونة','فتة','كنافة','لقيمات','حمص','تبولة','مقلوبة','منسف','كباب','ملوخية','كشري','ورق عنب','سمبوسة','شوربة عدس','فطيرة','دونات','آيس كريم','كيك','سلطة','بطاطس مقلية','بيض'],
+  'دول': ['الكويت','السعودية','مصر','العراق','الأردن','لبنان','المغرب','الجزائر','تونس','قطر','الإمارات','البحرين','عُمان','اليمن','تركيا','الهند','اليابان','الصين','فرنسا','إيطاليا','إسبانيا','ألمانيا','بريطانيا','أمريكا','البرازيل','الأرجنتين','روسيا','كندا','أستراليا','المكسيك'],
+  'أشياء': ['مفتاح','ساعة','نظارة','مظلة','مخدة','كرسي','مرآة','شمعة','مقص','قلم','دفتر','حقيبة','محفظة','جوال','تلفزيون','ثلاجة','مكنسة','مصباح','سجادة','ملعقة','كوب','فرشاة أسنان','مشط','حذاء','قبعة','خاتم','سلّم','بطانية','ريموت','شاحن'],
+  'حيوانات': ['أسد','نمر','فيل','زرافة','جمل','حصان','قطة','كلب','أرنب','دب','ذئب','ثعلب','قرد','غزال','تمساح','ثعبان','سلحفاة','دلفين','حوت','قرش','نسر','صقر','ببغاء','بطريق','بومة','نحلة','نملة','فراشة','ضفدع','خروف'],
+  'مهن': ['طبيب','معلم','مهندس','طيار','شرطي','إطفائي','طباخ','نجار','حلاق','خياط','محامي','صيدلي','ممرض','مزارع','صياد سمك','سائق تاكسي','رسام','مصور','مذيع','لاعب كرة','ميكانيكي','كهربائي','سبّاك','جندي','قاضي','خبّاز','ممثل','مبرمج','رائد فضاء','حارس أمن'],
+  'أماكن': ['مطار','مستشفى','مدرسة','جامعة','مطعم','مقهى','سينما','ملعب','حديقة','شاطئ','صحراء','جبل','مكتبة','متحف','سوق','مول','بنك','فندق','مسبح','مخبز','صيدلية','محطة بنزين','حديقة حيوان','مدينة ألعاب','سجن','مزرعة','سفينة','قطار','مركز شرطة','نادي رياضي'],
+  'رياضة': ['كرة القدم','كرة السلة','التنس','السباحة','الملاكمة','الجري','ركوب الخيل','الغوص','التزلج','الكاراتيه','الجودو','البولينغ','الغولف','كرة الطائرة','كرة اليد','تنس الطاولة','الشطرنج','رفع الأثقال','ركوب الدراجات','التسلق','المصارعة','البيسبول','الهوكي','سباق السيارات','الرماية','الإسكواش','البادل','الكريكت','ركوب الأمواج','القفز بالمظلة'],
+  'فواكه وخضار': ['تفاح','موز','برتقال','عنب','بطيخ','فراولة','مانجو','أناناس','رمان','كرز','خوخ','مشمش','تين','تمر','كيوي','ليمون','جزر','طماطم','خيار','بصل','ثوم','بطاطس','باذنجان','كوسا','فلفل','خس','بروكلي','ذرة','فطر','قرع']
+};
+var CAT_NAMES = Object.keys(CATS);
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+function ls(k, v) { try { if (v === undefined) { var s = localStorage.getItem(k); return s ? JSON.parse(s) : null; } localStorage.setItem(k, JSON.stringify(v)); } catch (e) { return null; } }
+function $(s) { return app.querySelector(s); }
+function rnd(n) { return crypto.getRandomValues(new Uint32Array(1))[0] % n; }
+function shuffle(a) { a = a.slice(); for (var i = a.length - 1; i > 0; i--) { var j = rnd(i + 1), t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
+var MASK = '<svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8c3-2 15-2 18 0 0 6-3 10-9 10S3 14 3 8z"/><path d="M7 11c1-1 2.5-1 3.5 0M13.5 11c1-1 2.5-1 3.5 0"/></svg>';
+
+if (!window.crypto || !crypto.subtle) { app.innerHTML = '<h1>المحتال</h1><p class="muted">افتح الصفحة من رابط https في متصفح حديث.</p>'; return; }
+var hash = location.hash.replace(/^#/, ''), m;
+window.addEventListener('hashchange', function () { location.reload(); });
+if (hash === 'new') return create();
+if ((m = hash.match(/^g=([a-z0-9]{6,20})$/))) return game(m[1]);
+location.href = './';
+
+function create() {
+  app.innerHTML = '<div class="top"><h1>المحتال</h1><a class="pill" href="./">رجوع</a></div>' +
+    '<div class="card stack"><p class="muted" style="margin:0">كل اللاعبين يرون كلمة سرية، إلا المحتال: يرى الفئة فقط. تحدّثوا وأعطوا تلميحات، ثم صوّتوا بأيديكم على المحتال. المحتال يفوز إن لم يُكشف أو إن عرف الكلمة.</p>' +
+    '<div><label for="nm">اسمك</label><input id="nm" maxlength="20" autocomplete="off" placeholder="مثلاً: حسين"></div><button class="btn" id="go">أنشئ اللعبة</button>' +
+    '<p class="muted" style="margin:0;font-size:13px">أبقِ هذا الجوال مفتوحاً طوال اللعبة لأنه يوزّع الكلمات.</p></div>';
+  $('#go').onclick = function () {
+    var name = $('#nm').value.trim(); if (!name) return $('#nm').focus();
+    this.disabled = true; this.textContent = 'جارٍ الإنشاء…';
+    N.genKeys().then(function (k) {
+      var room = N.rid(10), me = { id: N.rid(12), name: name.slice(0, 20) };
+      var I = { room: room, hostId: me.id, phase: 'lobby', players: [{ id: me.id, name: me.name, pub: 'host', score: 0 }], removed: {}, cats: CAT_NAMES.slice(), nImp: 'auto', round: 0, used: {}, v: 1 };
+      ls('i_' + room, { I: I, priv: k.priv, pub: k.pub, me: me });
+      location.replace('#g=' + room); location.reload();
+    });
+  };
+}
+
+function game(room) {
+  var H = ls('i_' + room), isHost = !!H, P = isHost ? null : (ls('ip_' + room) || {});
+  var S = null, V = null, Vv = -1, hidden = true, lastRound = -1, tab = 'game';
+  var joinUrl = location.origin + location.pathname + '#g=' + room;
+
+  /* ---------- host ---------- */
+  var lastPriv = {}, lastPubV = -1, timer = null;
+  function impCount(n) { return H.I.nImp === 'auto' ? (n >= 6 ? 2 : 1) : Math.min(+H.I.nImp, n - 2); }
+  function pub() { var I = H.I; return { t: 'state', v: I.v, hostId: I.hostId, hostPub: H.pub, phase: I.phase, round: I.round, cats: I.cats, nImp: I.nImp, cat: I.phase !== 'lobby' ? I.cat : null, first: I.first || null,
+    players: I.players.map(function (p) { return { id: p.id, name: p.name, score: p.score }; }),
+    reveal: I.phase === 'reveal' ? { word: I.word, imps: I.imps } : null }; }
+  function priv(p) { var I = H.I; if (I.phase === 'lobby' || !I.imps) return null; var imp = I.imps.indexOf(p.id) >= 0; return { round: I.round, imp: imp, cat: I.cat, word: imp ? null : I.word }; }
+  function refresh(now) {
+    var I = H.I; S = pub(); V = priv(I.players.filter(function (p) { return p.id === H.me.id; })[0]); render();
+    clearTimeout(timer);
+    timer = setTimeout(function () {
+      ls('i_' + room, H);
+      if (S.v !== lastPubV) { lastPubV = S.v; N.publish(room, S).catch(function () {}); }
+      I.players.forEach(function (p) {
+        if (p.id === H.me.id) return; var view = priv(p); if (!view) return;
+        var key = JSON.stringify(view); if (lastPriv[p.id] === key) return; lastPriv[p.id] = key; view.v = I.v;
+        N.encryptFor(p.pub, view).then(function (e) { e.t = 'priv'; e.to = p.id; e.v = I.v; return N.publish(room, e); }).catch(function () { lastPriv[p.id] = null; });
+      });
+    }, now ? 50 : 400);
+  }
+  function hostMsg(msg) {
+    var I = H.I;
+    if (msg.t !== 'join' || !msg.id || !msg.pub || I.removed[msg.id]) return;
+    var name = String(msg.name || '').slice(0, 20).trim() || 'لاعب', ex = I.players.filter(function (p) { return p.id === msg.id; })[0];
+    if (ex) { ex.name = name; ex.pub = msg.pub; lastPriv[msg.id] = null; I.v++; refresh(); }
+    else if (I.players.length < 10) { I.players.push({ id: msg.id, name: name, pub: msg.pub, score: 0 }); I.v++; refresh(); }
+  }
+  function startRound() {
+    var I = H.I, n = I.players.length; if (n < 3 || !I.cats.length) return;
+    var cat = I.cats[rnd(I.cats.length)], used = I.used[cat] = I.used[cat] || [];
+    var left = CATS[cat].filter(function (w) { return used.indexOf(w) < 0; }); if (!left.length) { used.length = 0; left = CATS[cat].slice(); }
+    var word = left[rnd(left.length)]; used.push(word);
+    var ids = shuffle(I.players.map(function (p) { return p.id; }));
+    I.imps = ids.slice(0, impCount(n)); I.cat = cat; I.word = word; I.round++; I.phase = 'play';
+    I.first = I.players[rnd(n)].id; I.v++; refresh(true);
+  }
+  function reveal() { H.I.phase = 'reveal'; H.I.v++; refresh(true); }
+  function score(who) { var I = H.I; I.players.forEach(function (p) { var imp = I.imps.indexOf(p.id) >= 0; if (who === 'imp' && imp) p.score += 2; if (who === 'good' && !imp) p.score += 1; }); I.scored = I.round; I.v++; refresh(true); }
+
+  /* ---------- player ---------- */
+  function playerMsg(msg) {
+    if (msg.t === 'state' && msg.hostId) { if (!S || msg.v >= S.v) { S = msg; render(); } }
+    else if (msg.t === 'priv' && P.id && msg.to === P.id && msg.v > Vv) { var v = msg.v; N.decryptWith(P.priv, msg).then(function (d) { if (v > Vv) { Vv = v; V = d; render(); } }).catch(function () {}); }
+  }
+  N.onStatus(function () { var el = document.getElementById('net'); if (el) el.textContent = netText(); });
+  function netText() { var s = N.status(); return s === false ? 'لا يوجد اتصال… جارٍ المحاولة' : s ? 'متصل' : 'جارٍ الاتصال…'; }
+  if (isHost) { N.connect(room, hostMsg); refresh(true); if ('wakeLock' in navigator) navigator.wakeLock.request('screen').catch(function () {}); }
+  else {
+    N.connect(room, playerMsg);
+    if (P.id) N.publish(room, { t: 'join', id: P.id, name: P.name, pub: P.pub }).catch(function () {});
+    setInterval(function () { if (P.id && S && !S.players.some(function (p) { return p.id === P.id; })) N.publish(room, { t: 'join', id: P.id, name: P.name, pub: P.pub }).catch(function () {}); }, 6000);
+    render();
+  }
+
+  function me() { return isHost ? H.me.id : P.id; }
+  function nm(id) { var p = S && S.players.filter(function (x) { return x.id === id; })[0]; return p ? p.name : '؟'; }
+
+  function render() {
+    if (S && S.round !== lastRound) { lastRound = S.round; hidden = true; }
+    var h = '<div class="top"><h1>المحتال</h1>' + (S && S.round ? '<span class="pill gold">الجولة ' + S.round + '</span>' : '') + '</div>';
+    if (!isHost && !P.id) h += '<div class="card stack"><h2>انضم إلى اللعبة</h2><div><label for="nm">اكتب اسمك</label><input id="nm" maxlength="20" autocomplete="off" placeholder="مثلاً: سارة"></div><button class="btn" id="join">انضم</button></div>';
+    else if (!S) h += '<div class="card"><p class="muted" style="margin:0">جارٍ الاتصال باللعبة…</p></div>';
+    else if (tab === 'help') h += helpView();
+    else if (tab === 'score') h += scoreView();
+    else if (S.phase === 'lobby') h += lobbyView();
+    else h += roundView();
+    h += '<div class="net" id="net">' + netText() + '</div>';
+    if (S) h += '<nav class="tabs">' + [['game', 'اللعبة'], ['score', 'النقاط'], ['help', 'الشرح']].map(function (t) { return '<button data-tab="' + t[0] + '" class="' + (tab === t[0] ? 'on' : '') + '">' + t[1] + '</button>'; }).join('') + '</nav>';
+    var y = window.scrollY; app.innerHTML = h; window.scrollTo(0, y); bind();
+  }
+  function lobbyView() {
+    var h = '';
+    if (isHost) h += '<div class="card stack"><h2 style="text-align:center">امسح للانضمام</h2><div class="qr">' + N.qrSVG(joinUrl) + '</div><div class="link">' + esc(joinUrl) + '</div></div>';
+    else h += '<div class="card big"><div class="muted">أهلاً</div><div class="role" style="font-size:32px">' + esc(P.name) + '</div><div class="muted">' + (S.players.some(function (p) { return p.id === P.id; }) ? 'أنت في اللعبة. انتظر حتى يبدأ المضيف.' : 'جارٍ الانضمام…') + '</div></div>';
+    h += '<h2>اللاعبون (' + S.players.length + ')</h2>' + S.players.map(function (p, i) { return '<div class="seat"><span class="num">' + (i + 1) + '</span><span class="nm">' + esc(p.name) + (p.id === S.hostId ? ' <span class="muted" style="font-size:13px">(المضيف)</span>' : '') + '</span>' + (isHost && p.id !== S.hostId ? '<button class="x" data-rm="' + esc(p.id) + '">إزالة</button>' : '') + '</div>'; }).join('');
+    h += settingsView();
+    return h;
+  }
+  function settingsView() {
+    if (!isHost) return '<div class="card"><div class="b" style="margin-bottom:8px">الفئات</div><div class="chips">' + S.cats.map(function (c) { return '<span class="chip">' + esc(c) + '</span>'; }).join('') + '</div></div>';
+    var I = H.I, n = I.players.length;
+    var h = '<div class="card stack"><div class="b">اختر الفئات</div><div class="chips">' + CAT_NAMES.map(function (c) { var on = I.cats.indexOf(c) >= 0; return '<button class="pick' + (on ? ' on' : '') + '" style="width:auto;min-height:44px" data-cat="' + esc(c) + '" aria-pressed="' + on + '">' + esc(c) + '</button>'; }).join('') + '</div>' +
+      '<div class="b">عدد المحتالين</div><div class="chips">' + [['auto', 'تلقائي (' + impCount(Math.max(n, 3)) + ')'], ['1', 'محتال واحد'], ['2', 'محتالان']].map(function (o) { var on = String(I.nImp) === o[0]; return '<button class="pick' + (on ? ' on' : '') + '" style="width:auto;min-height:44px" data-imp="' + o[0] + '" aria-pressed="' + on + '">' + o[1] + '</button>'; }).join('') + '</div>' +
+      '<p class="muted" style="margin:0;font-size:13px">تلقائي: محتالان إذا كنتم 6 أو أكثر، وإلا محتال واحد.</p>' +
+      '<button class="btn" id="start" ' + (n >= 3 && I.cats.length ? '' : 'disabled') + '>' + (I.round ? 'جولة جديدة' : 'ابدأ اللعب') + '</button>' + (n < 3 ? '<p class="muted" style="margin:0">تحتاج 3 لاعبين على الأقل.</p>' : '') + '</div>';
+    return h;
+  }
+  function roundView() {
+    var h = '';
+    if (S.phase === 'reveal') {
+      var r = S.reveal;
+      h += '<div class="card big"><div class="muted">الكلمة كانت</div><div class="role">' + esc(r.word) + '</div><span class="pill">' + esc(S.cat) + '</span></div>';
+      h += '<div class="card evil big" style="color:#F08A84">' + MASK + '<div class="b" style="font-size:20px">' + (r.imps.length > 1 ? 'المحتالان' : 'المحتال') + '</div><div class="role" style="font-size:30px;color:#F3EEE2">' + r.imps.map(nm).map(esc).join(' و') + '</div></div>';
+      if (isHost) {
+        var I = H.I;
+        if (I.scored !== I.round) h += '<div class="card stack"><div class="b">من فاز بهذه الجولة؟</div><div class="row"><button class="btn" id="wgood">اللاعبون</button><button class="btn ghost" id="wimp">' + (r.imps.length > 1 ? 'المحتالان' : 'المحتال') + '</button></div><p class="muted" style="margin:0;font-size:13px">اللاعبون: +1 لكل واحد. المحتال: +2.</p></div>';
+        h += '<button class="btn" id="next">جولة جديدة</button><button class="btn ghost" id="settings">تغيير الفئات</button>';
+      } else h += '<p class="muted" style="text-align:center">بانتظار المضيف لبدء جولة جديدة…</p>';
+      return h;
+    }
+    // play
+    if (!V || V.round !== S.round) return '<div class="card"><p class="muted" style="margin:0">' + (S.players.some(function (p) { return p.id === me(); }) ? 'جارٍ استلام كلمتك…' : 'بدأت الجولة قبل انضمامك، انتظر الجولة القادمة.') + '</p></div>';
+    if (hidden) h += '<div class="card big" style="padding:40px 18px"><div class="role" style="font-size:28px">كلمتك جاهزة</div><div class="muted">تأكد أن لا أحد ينظر إلى شاشتك.</div><button class="btn" id="reveal">اكشف كلمتي</button></div>';
+    else if (V.imp) h += '<div class="card evil big" style="color:#F08A84">' + MASK + '<div class="role" style="color:#F08A84">أنت المحتال!</div><div class="muted">لا تعرف الكلمة. الفئة هي:</div><span class="pill red" style="font-size:18px;padding:8px 18px">' + esc(V.cat) + '</span><div class="ab" style="font-size:16px">استمع للتلميحات واندمج معهم. تفوز إن لم يكشفوك، أو إن خمّنت الكلمة.</div><button class="btn ghost" id="hide">إخفاء</button></div>';
+    else h += '<div class="card good big"><div class="muted">الكلمة السرية</div><div class="role">' + esc(V.word) + '</div><span class="pill blue">' + esc(V.cat) + '</span><div class="ab" style="font-size:16px">أعطِ تلميحاً يدل على الكلمة دون أن تكشفها للمحتال.</div><button class="btn ghost" id="hide">إخفاء</button></div>';
+    h += '<div class="card"><div class="b">الفئة: <span class="gold">' + esc(S.cat) + '</span></div><div class="muted" style="margin-top:6px">يبدأ بالتلميح: <b class="gold">' + esc(nm(S.first)) + '</b>، ثم بالدور حول الدائرة.</div></div>';
+    if (isHost) h += '<div class="card stack"><div class="muted" style="font-size:14px">عندما تنتهون من التلميحات والتصويت بالأيدي:</div><button class="btn" id="doreveal">اكشف الكلمة والمحتال</button></div>';
+    return h;
+  }
+  function scoreView() {
+    var list = S.players.slice().sort(function (a, b) { return b.score - a.score; });
+    return '<h2>النقاط</h2>' + list.map(function (p, i) { return '<div class="seat' + (p.id === me() ? ' mine' : '') + '"><span class="num">' + (i + 1) + '</span><span class="nm">' + esc(p.name) + '</span><b class="gold">' + p.score + '</b></div>'; }).join('');
+  }
+  function helpView() {
+    function sec(t, items) { return '<div class="card"><div class="gold b" style="font-size:18px;margin-bottom:8px">' + t + '</div>' + items.map(function (i) { return '<p class="infoline">• ' + i + '</p>'; }).join('') + '</div>'; }
+    return '<h2 class="gold">طريقة اللعب</h2>' +
+      sec('الفكرة', ['كل اللاعبين يرون كلمة سرية واحدة، إلا المحتال (أو المحتالين): يرى الفئة فقط.', 'المحتالون لا يعرفون بعضهم.']) +
+      sec('اللعب', ['يبدأ اللاعب الذي يظهر اسمه، ثم بالدور: كل واحد يقول تلميحاً قصيراً عن الكلمة.', 'لا تكشف الكلمة بوضوح، فالمحتال يستمع ويحاول أن يعرفها.', 'المحتال يتظاهر بأنه يعرف الكلمة ويعطي تلميحاً مقنعاً.', 'يمكنكم لعب أكثر من دور تلميحات قبل التصويت.']) +
+      sec('التصويت (بالأيدي)', ['عندما تنتهون، يشير كل لاعب في الوقت نفسه إلى من يظنه المحتال.', 'إن كُشف المحتال، يحصل على فرصة أخيرة: إن خمّن الكلمة يفوز.', 'ثم يضغط المضيف "اكشف الكلمة والمحتال" ليظهر الجواب على كل الجوالات.']) +
+      sec('الفوز والنقاط', ['يفوز اللاعبون إن كشفوا المحتال ولم يخمّن الكلمة: +1 لكل لاعب.', 'يفوز المحتال إن لم يُكشف أو خمّن الكلمة: +2.', 'المضيف يختار الفائز بعد الكشف، والنقاط تُجمع عبر الجولات.']);
+  }
+  function bind() {
+    app.querySelectorAll('[data-tab]').forEach(function (b) { b.onclick = function () { tab = b.getAttribute('data-tab'); render(); window.scrollTo(0, 0); }; });
+    app.querySelectorAll('[data-rm]').forEach(function (b) { b.onclick = function () { var id = b.getAttribute('data-rm'); H.I.removed[id] = 1; H.I.players = H.I.players.filter(function (p) { return p.id !== id; }); H.I.v++; refresh(true); }; });
+    app.querySelectorAll('[data-cat]').forEach(function (b) { b.onclick = function () { var c = b.getAttribute('data-cat'), a = H.I.cats, i = a.indexOf(c); if (i >= 0) a.splice(i, 1); else a.push(c); H.I.v++; refresh(true); }; });
+    app.querySelectorAll('[data-imp]').forEach(function (b) { b.onclick = function () { H.I.nImp = b.getAttribute('data-imp'); H.I.v++; refresh(true); }; });
+    var x;
+    if ((x = $('#join'))) x.onclick = function () {
+      var name = $('#nm').value.trim(); if (!name) return $('#nm').focus(); this.disabled = true; this.textContent = 'جارٍ الانضمام…';
+      N.genKeys().then(function (k) { P = { id: N.rid(12), name: name.slice(0, 20), priv: k.priv, pub: k.pub }; ls('ip_' + room, P); render(); return N.publish(room, { t: 'join', id: P.id, name: P.name, pub: P.pub }); }).catch(function () {});
+    };
+    if ((x = $('#start'))) x.onclick = startRound;
+    if ((x = $('#next'))) x.onclick = startRound;
+    if ((x = $('#settings'))) x.onclick = function () { H.I.phase = 'lobby'; H.I.v++; refresh(true); };
+    if ((x = $('#doreveal'))) x.onclick = function () { if (confirm('كشف الكلمة والمحتال للجميع؟')) reveal(); };
+    if ((x = $('#wgood'))) x.onclick = function () { score('good'); };
+    if ((x = $('#wimp'))) x.onclick = function () { score('imp'); };
+    if ((x = $('#reveal'))) x.onclick = function () { hidden = false; render(); };
+    if ((x = $('#hide'))) x.onclick = function () { hidden = true; render(); };
+  }
+}
+})();
+</script>
+</body>
+</html>

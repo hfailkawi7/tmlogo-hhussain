@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>ساعة الغدر</title>
+<title>ألعاب الغدر</title>
 <meta name="theme-color" content="#0E1220">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Reem+Kufi:wght@500;700&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
@@ -59,9 +59,9 @@ ol.night{margin:0;padding-inline-start:22px;display:flex;flex-direction:column;g
 .net{font-size:12px;color:#A9B0C3;text-align:center}
 .x{background:none;border:none;color:#F08A84;font-size:14px;font-family:inherit;cursor:pointer;min-height:36px}
 </style>
-<script src="qr.js?v=1794734212"></script>
-<script src="icons.js?v=1794734212"></script>
-<script src="net.js?v=1794734212"></script>
+<script src="qr.js?v=1794734920"></script>
+<script src="icons.js?v=1794734920"></script>
+<script src="net.js?v=1794734920"></script>
 </head>
 <body>
 <div id="app"></div>
@@ -173,10 +173,11 @@ function evilCount(n){return n<=7?2:3;}
 
 /* ---------- home ---------- */
 function home(){
+  function card(href,ic,t,d){return '<a class="card" href="'+href+'" style="text-decoration:none;color:inherit;display:flex;gap:14px;align-items:center;padding:20px 16px">'+ic+'<div style="flex:1"><div style="font-family:Reem Kufi,sans-serif;font-weight:700;font-size:24px;color:#E3B35A">'+t+'</div><div class="muted" style="font-size:14px">'+d+'</div></div></a>';}
   app.innerHTML='<div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:16px">'+
-  '<div style="text-align:center"><h1 style="font-size:40px">ساعة الغدر</h1><p class="muted">لعبة خداع جماعية من 5 إلى 10 لاعبين.</p></div>'+
-  '<a class="btn" href="play.html#new" style="text-decoration:none;text-align:center;display:block;line-height:24px">ابدأ لعبة جديدة</a>'+
-  '<p class="muted" style="text-align:center;margin:0">بعدها تختار: تلعب معهم، أو تكون الراوي.</p>'+
+  '<div style="text-align:center"><h1 style="font-size:36px">اختر لعبة</h1><p class="muted">ألعاب جماعية على الجوال، من يُنشئ اللعبة يعرض رمز QR والبقية يمسحونه.</p></div>'+
+  card('play.html#new',CTIcon('الزعيم',52),'ساعة الغدر','أشرار وطيبون وشخصيات بقدرات سرية. من 5 إلى 10 لاعبين، مع راوٍ أو بدونه.')+
+  card('imposter.html#new','<span style="width:52px;height:52px;border-radius:999px;background:#3A1D1F;display:inline-flex;align-items:center;justify-content:center;flex:none"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#F08A84" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8c3-2 15-2 18 0 0 6-3 10-9 10S3 14 3 8z"/><path d="M7 11c1-1 2.5-1 3.5 0M13.5 11c1-1 2.5-1 3.5 0"/></svg></span>','المحتال','الجميع يعرف الكلمة إلا المحتال. تلميحات وتصويت بالأيدي. من 3 إلى 10 لاعبين.')+
   '<p class="muted" style="font-size:13px;text-align:center">اللاعبون لا يضغطون هنا، بل يمسحون رمز QR من جوال من أنشأ اللعبة.</p></div>';
 }
 
